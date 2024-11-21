@@ -1,8 +1,8 @@
-# Team *enter team name here* Small Group project
+Team Pelican
 
 ## Team members
 The members of the team are:
-- *enter full name 1 here*
+- Marc-Adrian Mot
 - *enter full name 2 here*
 - *enter full name 3 here*
 - *enter full name 4 here*
