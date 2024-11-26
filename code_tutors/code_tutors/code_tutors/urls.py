@@ -21,13 +21,14 @@ from django.urls import path
 from tutorials import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', views.home, name='home'),
-    path('dashboard/', views.dashboard, name='dashboard'),
-    path('log_in/', views.LogInView.as_view(), name='log_in'),
-    path('log_out/', views.log_out, name='log_out'),
-    path('password/', views.PasswordView.as_view(), name='password'),
-    path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
-    path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
+    path('admin/', admin.site.urls),  # Admin panel
+    path('', views.home, name='home'),  # Home screen
+    path('dashboard/', views.dashboard, name='dashboard'),  # Dashboard route
+    path('log_in/', views.LogInView.as_view(), name='log_in'),  # Login route
+    path('log_out/', views.log_out, name='log_out'),  # Logout route
+    path('password/', views.PasswordView.as_view(), name='password'),  # Password change
+    path('profile/', views.ProfileUpdateView.as_view(), name='profile'),  # Profile update
+    path('sign_up/', views.SignUpView.as_view(), name='sign_up'),  # Signup route
 ]
+
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
