@@ -3,7 +3,7 @@ Team Pelican
 ## Team members
 The members of the team are:
 - Marc-Adrian Mot
-- Junjie Zhou
+- *Junjie Zhou
 - *enter full name 3 here*
 - *enter full name 4 here*
 - *Hassan Muddassir*
