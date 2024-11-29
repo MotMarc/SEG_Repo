@@ -4,13 +4,16 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
 
+#from
+from .forms import BookingForm
+from .models import Tutor, Booking
 
 @login_required
 def dashboard(request):
@@ -151,3 +154,21 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+
+    #...
+@login_required
+def create_booking(request):
+    """Handle the creation of a booking with a tutor."""
+    if request.method == 'POST':
+        form = BookingForm(request.POST)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            booking.student = request.user  # Automatically set the logged-in user as the student.
+            booking.save()
+            messages.success(request, "Your booking was successful!")
+            return redirect('dashboard')  # Redirect to dashboard or any appropriate page
+    else:
+        form = BookingForm()
+        form.fields['tutor'].queryset = Tutor.objects.all()  # Limit tutors to all available tutors
+
+    return render(request, 'tutorials/create_booking.html', {'form': form})

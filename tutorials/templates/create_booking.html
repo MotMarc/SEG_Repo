@@ -1,0 +1,21 @@
+{% extends 'base_content.html' %}
+
+{% block content %}
+    <h2>Create a Booking</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Book Now</button>
+    </form>
+
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+{% endblock %}
