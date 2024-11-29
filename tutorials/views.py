@@ -156,7 +156,7 @@ class SignUpView(LoginProhibitedMixin, FormView):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
 
-    #...Handle the creation of a booking with a tutor.
+    #Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
     if request.method == 'POST':

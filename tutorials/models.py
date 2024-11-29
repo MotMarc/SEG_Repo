@@ -72,9 +72,9 @@ class Booking(models.Model):
         (DECLINED, 'Declined'),
     ]
 
-    student = models.ForeignKey('User', on_delete=models.CASCADE, related_name='student_bookings')  # Use string reference
-    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='tutor_bookings')  # Use string reference
-    language = models.ForeignKey('Language', on_delete=models.CASCADE)  # Use string reference
+    student = models.ForeignKey('User', on_delete=models.CASCADE, related_name='student_bookings')  
+    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='tutor_bookings')  
+    language = models.ForeignKey('Language', on_delete=models.CASCADE)  
     booking_time = models.DateTimeField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
 

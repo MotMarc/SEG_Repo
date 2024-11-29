@@ -109,7 +109,7 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
         )
         return user
     
-#Form for students to create a booking with a tutor.
+#Form for students to create a booking for a language with a tutor.
 class BookingForm(forms.ModelForm):
 
     class Meta:

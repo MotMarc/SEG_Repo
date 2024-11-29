@@ -8,7 +8,7 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('username', 'email')
     list_filter = ('is_staff', 'is_active')
 
-#booking
+#admin booking
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
     list_display = ('student', 'tutor', 'language', 'booking_time', 'status')  # Add more fields if necessary
