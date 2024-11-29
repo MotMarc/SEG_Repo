@@ -109,9 +109,8 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
         )
         return user
     
-#booking form
+#Form for students to create a booking with a tutor.
 class BookingForm(forms.ModelForm):
-    """Form for students to create a booking with a tutor."""
 
     class Meta:
         model = Booking

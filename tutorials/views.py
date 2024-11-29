@@ -155,20 +155,20 @@ class SignUpView(LoginProhibitedMixin, FormView):
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
-    #...
+
+    #...Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
-    """Handle the creation of a booking with a tutor."""
     if request.method == 'POST':
         form = BookingForm(request.POST)
         if form.is_valid():
             booking = form.save(commit=False)
-            booking.student = request.user  # Automatically set the logged-in user as the student.
+            booking.student = request.user  
             booking.save()
             messages.success(request, "Your booking was successful!")
-            return redirect('dashboard')  # Redirect to dashboard or any appropriate page
+            return redirect('dashboard')  
     else:
         form = BookingForm()
-        form.fields['tutor'].queryset = Tutor.objects.all()  # Limit tutors to all available tutors
+        form.fields['tutor'].queryset = Tutor.objects.all()  
 
     return render(request, 'tutorials/create_booking.html', {'form': form})  
