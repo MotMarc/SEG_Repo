@@ -58,9 +58,9 @@ class Tutor(models.Model):
     def __str__(self):
         return f'Tutor: {self.user.full_name()}'
 
-# Define the Booking model
+# Define booking for a language.
 class Booking(models.Model):
-    """Represents a booking between a student and a tutor for a specific language."""
+    
 
     PENDING = 'Pending'
     ACCEPTED = 'Accepted'
