@@ -4,7 +4,7 @@ Team Pelican
 The members of the team are:
 - Marc-Adrian Mot
 - Junjie Zhou
-- Mert Ayranci
+- Mert Ayranci 
 - *enter full name 4 here*
 - *Hassan Muddassir*
 
