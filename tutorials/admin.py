@@ -15,3 +15,4 @@ class BookingAdmin(admin.ModelAdmin):
 
 admin.site.register(Tutor)
 admin.site.register(Language)
+  

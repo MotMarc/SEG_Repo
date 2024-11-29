@@ -171,4 +171,4 @@ def create_booking(request):
         form = BookingForm()
         form.fields['tutor'].queryset = Tutor.objects.all()  # Limit tutors to all available tutors
 
-    return render(request, 'tutorials/create_booking.html', {'form': form})
+    return render(request, 'tutorials/create_booking.html', {'form': form})  

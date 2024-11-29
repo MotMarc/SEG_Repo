@@ -38,4 +38,4 @@ class Migration(migrations.Migration):
                 ('tutor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tutor_bookings', to='tutorials.tutor')),
             ],
         ),
-    ]
+    ]   
