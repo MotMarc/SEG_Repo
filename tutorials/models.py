@@ -82,4 +82,4 @@ class Booking(models.Model):
         return (
             f"Booking by {self.student.username} with {self.tutor.user.username} "
             f"for {self.language.name} at {self.booking_time} (Status: {self.status})"
-        )
+        )  
