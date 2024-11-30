@@ -40,6 +40,11 @@ class User(AbstractUser):
         """Return a URL to a miniature version of the user's gravatar."""
         return self.gravatar(size=60)
 
+#Define tutor
+    @property
+    def is_tutor(self):
+        return hasattr(self, 'tutor')
+    
 #booking
 
 class Language(models.Model):
@@ -60,8 +65,6 @@ class Tutor(models.Model):
 
 # Define booking for a language.
 class Booking(models.Model):
-    
-
     PENDING = 'Pending'
     ACCEPTED = 'Accepted'
     DECLINED = 'Declined'

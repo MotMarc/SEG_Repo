@@ -8,5 +8,11 @@
 <body>
     <h1>Welcome, {{ user.first_name }}!</h1>
     <p>This is your dashboard where you can manage your activities.</p>
+<nav>
+    <ul>
+        <li><a href="{% url 'create_booking' %}">Create a Booking</a></li>
+        <li><a href="{% url 'pending_bookings' %}">View Pending Bookings</a></li>
+    </ul>
+</nav>
 </body>
 </html>

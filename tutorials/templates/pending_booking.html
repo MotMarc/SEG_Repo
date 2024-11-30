@@ -1,0 +1,33 @@
+<!-- tutorials/templates/tutorials/pending_bookings.html -->
+{% extends 'base_content.html' %}
+
+{% block content %}
+<h2>Pending Bookings</h2>
+
+{% if bookings %}
+    <ul>
+        {% for booking in bookings %}
+            <li>
+                {% if user.is_tutor %}
+                    Booking with {{ booking.student.full_name }} for {{ booking.language.name }} at {{ booking.booking_time }}
+                {% else %}
+                    Booking with {{ booking.tutor.user.full_name }} for {{ booking.language.name }} at {{ booking.booking_time }}
+                {% endif %}
+
+                
+                <form method="post" action="{% url 'update_booking_status' booking.id 'Accepted' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">Accept</button>
+                </form>
+                <form method="post" action="{% url 'update_booking_status' booking.id 'Declined' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Decline</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No pending bookings.</p>
+{% endif %}
+
+{% endblock %}

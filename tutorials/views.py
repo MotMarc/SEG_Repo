@@ -10,6 +10,8 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
+from django.http import HttpResponseForbidden, HttpResponseBadRequest
+
 
 #from
 from .forms import BookingForm
@@ -172,3 +174,47 @@ def create_booking(request):
         form.fields['tutor'].queryset = Tutor.objects.all()  
 
     return render(request, 'tutorials/create_booking.html', {'form': form})  
+
+#pending booking views
+@login_required
+def pending_bookings(request):
+    """Display pending bookings for the logged-in tutor or student."""
+    user = request.user
+
+    if user.is_tutor:
+        # User is a tutor; show bookings where they are the tutor
+        bookings = Booking.objects.filter(tutor__user=user, status=Booking.PENDING)
+    else:
+        # User is a student; show bookings where they are the student
+        bookings = Booking.objects.filter(student=user, status=Booking.PENDING)
+
+    return render(request, 'tutorials/pending_bookings.html', {'bookings': bookings})
+
+#update booking view
+@login_required
+def update_booking_status(request, booking_id, new_status):
+    """Allow tutors or students to accept or decline a booking."""
+    booking = get_object_or_404(Booking, id=booking_id)
+
+    # Validate the new_status
+    if new_status not in [Booking.ACCEPTED, Booking.DECLINED]:
+        return HttpResponseBadRequest("Invalid status.")
+
+    user = request.user
+
+    # Check if the user is authorized to update the booking
+    if user.is_tutor and booking.tutor.user == user:
+        # Tutor is updating the booking
+        booking.status = new_status
+        booking.save()
+        messages.success(request, f"Booking has been {new_status.lower()}.")
+    elif not user.is_tutor and booking.student == user:
+        # Student is updating the booking
+        booking.status = new_status
+        booking.save()
+        messages.success(request, f"Booking has been {new_status.lower()}.")
+    else:
+        # Unauthorized user
+        return HttpResponseForbidden("You are not allowed to perform this action.")
+
+    return redirect('pending_bookings')

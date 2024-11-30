@@ -29,7 +29,9 @@ urlpatterns = [
     path('password/', views.PasswordView.as_view(), name='password'),
     path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
     path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
-    #booking url path
+    #booking url paths
     path('create-booking/', views.create_booking, name='create_booking'),
+    path('bookings/pending/', views.pending_bookings, name='pending_bookings'),
+    path('bookings/<int:booking_id>/status/<str:new_status>/', views.update_booking_status, name='update_booking_status'),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)   
