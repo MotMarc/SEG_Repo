@@ -4,6 +4,7 @@ from django.db import models
 from libgravatar import Gravatar
 #...
 from django.contrib.auth import get_user_model
+from datetime import timedelta, time
 
 
 
@@ -57,32 +58,118 @@ class Language(models.Model):
 # Define the Tutor model
 class Tutor(models.Model):
     """Represents a tutor, extending the user with additional information."""
-    user = models.OneToOneField('User', on_delete=models.CASCADE)  # Use string reference
-    languages = models.ManyToManyField('Language', related_name='tutors')  # Use string reference
+    user = models.OneToOneField('User', on_delete=models.CASCADE)
+    languages = models.ManyToManyField('Language', related_name='tutors')
 
     def __str__(self):
         return f'Tutor: {self.user.full_name()}'
 
+
 # Define booking for a language.
 class Booking(models.Model):
+    """Represents a booking for tutoring services."""
+
+    # Status Choices
     PENDING = 'Pending'
     ACCEPTED = 'Accepted'
     DECLINED = 'Declined'
-
     STATUS_CHOICES = [
         (PENDING, 'Pending'),
         (ACCEPTED, 'Accepted'),
         (DECLINED, 'Declined'),
     ]
 
-    student = models.ForeignKey('User', on_delete=models.CASCADE, related_name='student_bookings')  
-    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='tutor_bookings')  
-    language = models.ForeignKey('Language', on_delete=models.CASCADE)  
-    booking_time = models.DateTimeField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    # Frequency Choices
+    WEEKLY = 'Weekly'
+    FORTNIGHTLY = 'Fortnightly'
+    FREQUENCY_CHOICES = [
+        (WEEKLY, 'Weekly'),
+        (FORTNIGHTLY, 'Fortnightly'),
+    ]
+
+    student = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE,
+        related_name='bookings_as_student',
+        verbose_name='Student'
+    )
+    tutor = models.ForeignKey(
+        'Tutor',
+        on_delete=models.CASCADE,
+        related_name='bookings_as_tutor',
+        verbose_name='Tutor'
+    )
+    language = models.ForeignKey(
+        'Language',
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        verbose_name='Language'
+    )
+    term = models.ForeignKey(
+        'Term',
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        verbose_name='Term'
+    )
+    
+    
+    frequency = models.CharField(
+        max_length=15,  
+        choices=FREQUENCY_CHOICES,
+        default=WEEKLY,
+        verbose_name='Frequency'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=PENDING,
+        verbose_name='Status'
+    )
+
+    start_time = models.TimeField(verbose_name='Start Time', null=False, blank=False, default=time(10, 0))
+
+    duration = models.DurationField(
+        help_text="Duration of each lesson (e.g., 1 hour)",
+        verbose_name='Duration',
+        default=timedelta(hours=1)  
+    )
+
+    experience_level = models.TextField(
+        verbose_name="Experience Level",
+        max_length=500,  # Adjust the character limit if necessary
+        blank=True,      # Allow this field to be optional
+        help_text="Describe your coding experience level in 100 words or less."
+    )
+
+    class Meta:
+        ordering = ['term__start_date', 'start_time']
+        verbose_name = 'Booking'
+        verbose_name_plural = 'Bookings'
+        constraints = [
+        models.UniqueConstraint(
+            fields=['tutor', 'term', 'start_time'],
+            condition=models.Q(status='Accepted'),  # Directly using the string 'Accepted'
+            name='unique_tutor_booking_per_time'
+            )
+        ]
 
     def __str__(self):
-        return (
-            f"Booking by {self.student.username} with {self.tutor.user.username} "
-            f"for {self.language.name} at {self.booking_time} (Status: {self.status})"
-        )  
+        return f'Booking {self.id}: {self.student.full_name()} with {self.tutor.user.full_name()} for {self.language.name}'
+
+#...
+class Term(models.Model):
+    name = models.CharField(max_length=50)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def __str__(self):
+        return self.name
+
+class Lesson(models.Model):
+    booking = models.ForeignKey('Booking', on_delete=models.CASCADE)
+    date = models.DateField()
+    start_time = models.TimeField()
+    duration = models.DurationField()
+
+    def __str__(self):
+        return f'Lesson on {self.date} at {self.start_time}'

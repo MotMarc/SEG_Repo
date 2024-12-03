@@ -12,6 +12,17 @@ user_fixtures = [
     {'username': '@charlie', 'email': 'charlie.johnson@example.org', 'first_name': 'Charlie', 'last_name': 'Johnson'},
 ]
 
+language_fixtures = [
+    'Python',
+    'JavaScript',
+    'Ruby',
+    'Java',
+    'C++',
+    'HTML',
+    'CSS',
+     'C', 'Golang', 'SQL', 'Kotlin', 'Rust', 'PHP', 'R', 'Dart', 'Django', 'C#', 'Swift', 'Perl', 'Scala', 'Haskell'
+]
+
 
 class Command(BaseCommand):
     """Build automation command to seed the database."""
@@ -71,3 +82,5 @@ def create_username(first_name, last_name):
 
 def create_email(first_name, last_name):
     return first_name + '.' + last_name + '@example.org'
+
+

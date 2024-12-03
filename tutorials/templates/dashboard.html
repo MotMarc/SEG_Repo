@@ -1,18 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-</head>
-<body>
-    <h1>Welcome, {{ user.first_name }}!</h1>
-    <p>This is your dashboard where you can manage your activities.</p>
+<!-- tutorials/templates/tutorials/dashboard.html -->
+{% extends 'base_content.html' %}
+
+{% block content %}
+<h1>Welcome, {{ user.first_name }}!</h1>
+<p>This is your dashboard where you can manage your activities.</p>
+
 <nav>
     <ul>
-        <li><a href="{% url 'create_booking' %}">Create a Booking</a></li>
-        <li><a href="{% url 'pending_bookings' %}">View Pending Bookings</a></li>
+        {% if user.is_staff %}
+            <!-- Admin-Specific Links -->
+            <li><a href="{% url 'admin_pending_bookings' %}">Manage Pending Bookings</a></li>
+            <li><a href="{% url 'admin:index' %}">Admin Dashboard</a></li>
+        {% endif %}
+
+        {% if user.is_tutor %}
+            <!-- Tutor-Specific Links -->
+            <li><a href="{% url 'tutor_profile' %}">Update Teaching Languages</a></li>
+            <li><a href="{% url 'dashboard' %}">View Scheduled Lessons</a></li>
+        {% else %}
+            <!-- Student-Specific Links -->
+            <li><a href="{% url 'create_booking' %}">Request a Booking</a></li>
+            <li><a href="{% url 'dashboard' %}">View Your Bookings</a></li>
+        {% endif %}
+
+        <!-- Common Links for All Users -->
+        <!-- "Change Password" link removed -->
+        <li><a href="{% url 'log_out' %}">Log Out</a></li>
     </ul>
 </nav>
-</body>
-</html>
+
+<!-- Optional: Display Messages -->
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+{% endblock %}

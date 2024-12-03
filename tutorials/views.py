@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured
@@ -8,14 +8,12 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, UserForm, SignUpForm, TutorProfileForm, BookingForm
 from tutorials.helpers import login_prohibited
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
+from .models import User, Booking, Tutor, Language, Term, Lesson
+from django.contrib.admin.views.decorators import staff_member_required
 
-
-#from
-from .forms import BookingForm
-from .models import Tutor, Booking
 
 @login_required
 def dashboard(request):
@@ -23,6 +21,15 @@ def dashboard(request):
 
     current_user = request.user
     return render(request, 'dashboard.html', {'user': current_user})
+
+    # if user.is_tutor:
+    #     # User is a tutor; fetch their lessons
+    #     lessons = Lesson.objects.filter(booking__tutor__user=user).order_by('date', 'start_time')
+    #     return render(request, 'tutor_dashboard.html', {'lessons': lessons})
+    # else:
+    #     # User is a student; fetch their bookings
+    #     bookings = Booking.objects.filter(student=user).order_by('term__start_date')
+    #     return render(request, 'student_dashboard.html', {'bookings': bookings})
 
 
 @login_prohibited
@@ -158,63 +165,90 @@ class SignUpView(LoginProhibitedMixin, FormView):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
 
-    #Handle the creation of a booking with a tutor.
+#Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
     if request.method == 'POST':
         form = BookingForm(request.POST)
         if form.is_valid():
             booking = form.save(commit=False)
-            booking.student = request.user  
+            booking.student = request.user  # Attach the logged-in user as the student
             booking.save()
-            messages.success(request, "Your booking was successful!")
-            return redirect('dashboard')  
+            messages.success(request, "Your booking was successfully created!")
+            return redirect('dashboard')
     else:
         form = BookingForm()
-        form.fields['tutor'].queryset = Tutor.objects.all()  
+        form.fields['tutor'].queryset = Tutor.objects.all()  # Restrict tutors to active ones
 
-    return render(request, 'tutorials/create_booking.html', {'form': form})  
+    return render(request, 'create_booking.html', {'form': form})
+
 
 #pending booking views
-@login_required
+@staff_member_required
 def pending_bookings(request):
-    """Display pending bookings for the logged-in tutor or student."""
-    user = request.user
+    """Display all pending bookings for admin users."""
+    bookings = Booking.objects.filter(status=Booking.PENDING).order_by('term__start_date')
+    return render(request, 'admin_pending_bookings.html', {'bookings': bookings})
 
-    if user.is_tutor:
-        # User is a tutor; show bookings where they are the tutor
-        bookings = Booking.objects.filter(tutor__user=user, status=Booking.PENDING)
-    else:
-        # User is a student; show bookings where they are the student
-        bookings = Booking.objects.filter(student=user, status=Booking.PENDING)
+#accept booking
+@staff_member_required
+def approve_booking(request, booking_id):
+    """Approve a specific booking and generate lessons."""
+    booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
+    booking.status = Booking.ACCEPTED
+    booking.save()
+    # Optionally, generate lessons or send notifications here
+    messages.success(request, f"Booking with ID {booking_id} has been approved.")
+    return redirect('admin_pending_bookings')
 
-    return render(request, 'tutorials/pending_bookings.html', {'bookings': bookings})
+#reject booking
+@staff_member_required
+def decline_booking(request, booking_id):
+    """Decline a specific booking."""
+    booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
+    booking.status = Booking.DECLINED
+    booking.save()
+    messages.success(request, f"Booking with ID {booking_id} has been declined.")
+    return redirect('admin_pending_bookings')
 
-#update booking view
+
+#update booking view(only admins)
 @login_required
 def update_booking_status(request, booking_id, new_status):
-    """Allow tutors or students to accept or decline a booking."""
+    """Allow only admins to update the status of a booking."""
+    if not request.user.is_staff:
+        return HttpResponseForbidden("You are not allowed to perform this action.")
+
     booking = get_object_or_404(Booking, id=booking_id)
 
-    # Validate the new_status
     if new_status not in [Booking.ACCEPTED, Booking.DECLINED]:
         return HttpResponseBadRequest("Invalid status.")
 
+    booking.status = new_status
+    booking.save()
+    messages.success(request, f"Booking has been {new_status.lower()}.")
+    return redirect('admin_pending_bookings')
+
+#...
+@login_required
+def tutor_profile(request):
+    """Allow tutors to select the languages they can teach."""
     user = request.user
 
-    # Check if the user is authorized to update the booking
-    if user.is_tutor and booking.tutor.user == user:
-        # Tutor is updating the booking
-        booking.status = new_status
-        booking.save()
-        messages.success(request, f"Booking has been {new_status.lower()}.")
-    elif not user.is_tutor and booking.student == user:
-        # Student is updating the booking
-        booking.status = new_status
-        booking.save()
-        messages.success(request, f"Booking has been {new_status.lower()}.")
-    else:
-        # Unauthorized user
-        return HttpResponseForbidden("You are not allowed to perform this action.")
+    # Check if the user is a tutor
+    if not user.is_tutor:
+        messages.error(request, "You must be a tutor to access this page.")
+        return redirect('dashboard')
 
-    return redirect('pending_bookings')
+    tutor = user.tutor  # Get the Tutor instance associated with the user
+
+    if request.method == 'POST':
+        form = TutorProfileForm(request.POST, instance=tutor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your teaching languages have been updated.")
+            return redirect('dashboard')
+    else:
+        form = TutorProfileForm(instance=tutor)
+
+    return render(request, 'tutor_profile.html', {'form': form})

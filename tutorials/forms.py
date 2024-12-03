@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Booking
+from .models import User, Booking, Tutor, Language, Term, Lesson
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -110,11 +110,43 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
         return user
     
 #Form for students to create a booking for a language with a tutor.
+
 class BookingForm(forms.ModelForm):
+    """Form for students to create a booking with a tutor."""
 
     class Meta:
         model = Booking
-        fields = ['tutor', 'language', 'booking_time']
+        fields = ['tutor', 'language', 'term', 'start_time', 'duration', 'frequency', 'experience_level']
         widgets = {
-            'booking_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }  
+            'term': forms.Select(attrs={'class': 'form-control'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'duration': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'frequency': forms.Select(attrs={'class': 'form-control'}),
+            'experience_level': forms.Textarea(attrs={
+                'rows': 4,
+                'placeholder': 'Write about your experience level in 100 words or less...',
+                'class': 'form-control',
+            }),
+        }
+        labels = {
+            'tutor': 'Select Tutor',
+            'language': 'Select Language',
+            'term': 'Select Term',
+            'start_time': 'Start Time',
+            'duration': 'Lesson Duration',
+            'frequency': 'Lesson Frequency',
+            'experience_level': 'Experience Level',
+        }
+
+
+class TutorProfileForm(forms.ModelForm):
+    """Form for tutors to select the languages they can teach."""
+    languages = forms.ModelMultipleChoiceField(
+        queryset=Language.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True,
+    )
+
+    class Meta:
+        model = Tutor
+        fields = ['languages']

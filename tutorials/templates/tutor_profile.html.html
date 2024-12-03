@@ -1,0 +1,19 @@
+<!-- templates/tutorials/tutor_profile.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Update Teaching Languages</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-group">
+        {{ form.languages.label_tag }}
+        {{ form.languages }}
+        {{ form.languages.errors }}
+    </div>
+    <button type="submit" class="btn btn-primary">Update Languages</button>
+</form>
+
+<a href="{% url 'dashboard' %}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+{% endblock %}

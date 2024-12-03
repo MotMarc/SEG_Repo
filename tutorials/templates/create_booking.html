@@ -1,4 +1,3 @@
-<!-- Create booking render -->
 {% extends 'base_content.html' %}
 
 {% block content %}
@@ -14,10 +13,9 @@
 
     <form method="post" novalidate>
         {% csrf_token %}
-        {{ form.as_p }}
+        {{ form.as_p }} <!-- This renders all the form fields, including experience_level -->
         <button type="submit" class="btn btn-primary">Book Now</button>
     </form>
 
     <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
 {% endblock %}
-  
