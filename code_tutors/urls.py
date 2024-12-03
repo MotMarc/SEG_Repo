@@ -32,9 +32,10 @@ urlpatterns = [
     # Booking URL paths
     path('create-booking/', views.create_booking, name='create_booking'),
     # Admin-specific Booking Management URLs
-    path('admin/pending-bookings/', views.pending_bookings, name='admin_pending_bookings'),
-    path('admin/pending-bookings/approve/<int:booking_id>/', views.approve_booking, name='approve_booking'),
-    path('admin/pending-bookings/decline/<int:booking_id>/', views.decline_booking, name='decline_booking'),
+    path('bookings/admin/pending/', views.pending_bookings, name='admin_pending_bookings'),
+    path('bookings/admin/pending/approve/<int:booking_id>/', views.approve_booking, name='approve_booking'),
+    path('bookings/admin/pending/decline/<int:booking_id>/', views.decline_booking, name='decline_booking'),
+    
     # ...
     path('tutor/profile/', views.tutor_profile, name='tutor_profile'),
 ]

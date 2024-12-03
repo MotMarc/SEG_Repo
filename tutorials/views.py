@@ -168,20 +168,32 @@ class SignUpView(LoginProhibitedMixin, FormView):
 #Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
+    """Handle the creation of a booking with a tutor."""
     if request.method == 'POST':
         form = BookingForm(request.POST)
         if form.is_valid():
             booking = form.save(commit=False)
-            booking.student = request.user  # Attach the logged-in user as the student
-            booking.save()
-            messages.success(request, "Your booking was successfully created!")
-            return redirect('dashboard')
+            booking.student = request.user
+
+            # Validate the regular sessions rule
+            overlapping_bookings = Booking.objects.filter(
+                tutor=booking.tutor,
+                term=booking.term,
+                day_of_week=booking.day_of_week,  # Compare the day of the week
+                start_time=booking.start_time,
+                frequency=booking.frequency,
+                status=Booking.ACCEPTED,
+            )
+            if overlapping_bookings.exists():
+                messages.error(request, "This tutor is already booked at the selected time and day.")
+            else:
+                booking.save()
+                messages.success(request, "Your booking request has been submitted.")
+                return redirect('dashboard')
     else:
         form = BookingForm()
-        form.fields['tutor'].queryset = Tutor.objects.all()  # Restrict tutors to active ones
 
     return render(request, 'create_booking.html', {'form': form})
-
 
 #pending booking views
 @staff_member_required
@@ -197,7 +209,6 @@ def approve_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
     booking.status = Booking.ACCEPTED
     booking.save()
-    # Optionally, generate lessons or send notifications here
     messages.success(request, f"Booking with ID {booking_id} has been approved.")
     return redirect('admin_pending_bookings')
 

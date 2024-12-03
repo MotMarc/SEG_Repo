@@ -79,6 +79,16 @@ class Booking(models.Model):
         (DECLINED, 'Declined'),
     ]
 
+    DAYS_OF_WEEK = [
+        ('Monday', 'Monday'),
+        ('Tuesday', 'Tuesday'),
+        ('Wednesday', 'Wednesday'),
+        ('Thursday', 'Thursday'),
+        ('Friday', 'Friday'),
+        ('Saturday', 'Saturday'),
+        ('Sunday', 'Sunday'),
+    ]
+
     # Frequency Choices
     WEEKLY = 'Weekly'
     FORTNIGHTLY = 'Fortnightly'
@@ -136,20 +146,30 @@ class Booking(models.Model):
 
     experience_level = models.TextField(
         verbose_name="Experience Level",
-        max_length=500,  # Adjust the character limit if necessary
-        blank=True,      # Allow this field to be optional
+        max_length=500, 
+        blank=True,      
         help_text="Describe your coding experience level in 100 words or less."
     )
 
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+
+    day_of_week = models.CharField(
+        max_length=15,
+        choices=DAYS_OF_WEEK,
+        default="Monday",  # Ensure a default
+        verbose_name="Day of the Week"
+    )
+    term = models.ForeignKey('Term', on_delete=models.CASCADE)
+
     class Meta:
-        ordering = ['term__start_date', 'start_time']
+        ordering = ['term__start_date', 'day_of_week', 'start_time']
         verbose_name = 'Booking'
         verbose_name_plural = 'Bookings'
         constraints = [
-        models.UniqueConstraint(
-            fields=['tutor', 'term', 'start_time'],
-            condition=models.Q(status='Accepted'),  # Directly using the string 'Accepted'
-            name='unique_tutor_booking_per_time'
+            models.UniqueConstraint(
+                fields=['tutor', 'term', 'day_of_week', 'start_time'],
+                condition=models.Q(status='Accepted'),
+                name='unique_tutor_booking_per_time'
             )
         ]
 

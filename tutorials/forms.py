@@ -3,6 +3,8 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
 from .models import User, Booking, Tutor, Language, Term, Lesson
+from datetime import datetime, timedelta
+
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -116,15 +118,16 @@ class BookingForm(forms.ModelForm):
 
     class Meta:
         model = Booking
-        fields = ['tutor', 'language', 'term', 'start_time', 'duration', 'frequency', 'experience_level']
+        fields = ['tutor', 'language', 'term', 'day_of_week', 'start_time', 'duration', 'frequency', 'experience_level']
         widgets = {
+            'day_of_week': forms.Select(attrs={'class': 'form-control'}),
             'term': forms.Select(attrs={'class': 'form-control'}),
             'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'duration': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'frequency': forms.Select(attrs={'class': 'form-control'}),
             'experience_level': forms.Textarea(attrs={
-                'rows': 4,
-                'placeholder': 'Write about your experience level in 100 words or less...',
+                'rows': 3,
+                'placeholder': 'Write about your experience level in maximum 100 words.',
                 'class': 'form-control',
             }),
         }
@@ -132,12 +135,41 @@ class BookingForm(forms.ModelForm):
             'tutor': 'Select Tutor',
             'language': 'Select Language',
             'term': 'Select Term',
+            'day_of_week': 'Select Booking Date',
             'start_time': 'Start Time',
             'duration': 'Lesson Duration',
             'frequency': 'Lesson Frequency',
             'experience_level': 'Experience Level',
         }
 
+def clean(self):
+    """Custom validation to ensure no overlapping bookings."""
+    cleaned_data = super().clean()
+    tutor = cleaned_data.get('tutor')
+    term = cleaned_data.get('term')
+    day_of_week = cleaned_data.get('day_of_week')
+    start_time = cleaned_data.get('start_time')
+    duration = cleaned_data.get('duration')
+
+    if tutor and term and day_of_week and start_time and duration:
+        # Calculate the end time of the booking
+        end_time = (datetime.combine(datetime.today(), start_time) + duration).time()
+
+        # Fetch existing bookings for the same tutor
+        overlapping_bookings = Booking.objects.filter(
+            tutor=tutor,
+            term=term,
+            day_of_week=day_of_week,
+            status=Booking.ACCEPTED,
+        ).filter(
+            start_time__lt=end_time,  # Start time overlaps
+            start_time__gte=(datetime.combine(datetime.today(), start_time) - timedelta(minutes=1)).time(),  # End time overlaps
+        )
+
+        if overlapping_bookings.exists():
+            raise forms.ValidationError("This tutor is already booked at the selected time.")
+
+    return cleaned_data
 
 class TutorProfileForm(forms.ModelForm):
     """Form for tutors to select the languages they can teach."""
