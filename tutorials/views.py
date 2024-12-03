@@ -10,7 +10,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
-
+from .forms import CourseForm
 #from
 from .forms import BookingForm
 from .models import Tutor, Booking
@@ -171,4 +171,17 @@ def create_booking(request):
         form = BookingForm()
         form.fields['tutor'].queryset = Tutor.objects.all()  
 
-    return render(request, 'tutorials/create_booking.html', {'form': form})  
+    return render(request, 'tutorials/create_booking.html', {'form': form})
+
+@login_required
+def add_course(request):
+    if request.method == 'POST':
+        form = CourseForm(request.POST)
+        if form.is_valid():
+            course = form.save(commit=False)
+            course.tutor = request.user
+            course.save()
+            return redirect('dashboard')
+    else:
+        form = CourseForm()
+    return render(request, 'add_course.html', {'form': form})
