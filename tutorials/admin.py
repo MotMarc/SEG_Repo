@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Booking, Tutor, Language, Term, Lesson
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
 
 
 @admin.register(User)
@@ -11,20 +11,24 @@ class UserAdmin(admin.ModelAdmin):
 #admin booking
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('student', 'tutor', 'language', 'term', 'start_time', 'frequency', 'status')  
-    search_fields = ('student__username', 'tutor__user__username', 'language__name')
-    list_filter = ('status', 'term')
+    list_display = ('student', 'get_tutor', 'language', 'specialization', 'term', 'start_time', 'frequency', 'status')  
+    search_fields = ('student__username', 'tutor__user__username', 'language__name', 'specialization__name')
+    list_filter = ('status', 'term')  # 'status' refers to an actual field on the Booking model.
     actions = ['approve_bookings']
 
+    def get_tutor(self, obj):
+        """Return the tutor's full name for display."""
+        return obj.tutor.user.full_name() if obj.tutor else "No Tutor Assigned"
+    get_tutor.short_description = 'Tutor'
+
     def approve_bookings(self, request, queryset):
-        """Custom admin action to approve selected bookings and generate lessons."""
+        """Custom admin action to approve selected bookings."""
         approved_count = 0
         for booking in queryset.filter(status=Booking.PENDING):
             booking.status = Booking.ACCEPTED
             booking.save()
-            self.generate_lessons(booking)
             approved_count += 1
-        self.message_user(request, f"{approved_count} booking(s) have been approved and lessons scheduled.")
+        self.message_user(request, f"{approved_count} booking(s) have been approved.")
 
     approve_bookings.short_description = "Approve selected bookings"
 
@@ -50,7 +54,6 @@ class BookingAdmin(admin.ModelAdmin):
             )
             current_date += timedelta(days=frequency_days)
 #...
-
 @admin.register(Language)
 class LanguageAdmin(admin.ModelAdmin):
     list_display = ('name',)
@@ -70,8 +73,8 @@ class TutorAdmin(admin.ModelAdmin):
 @admin.register(Term)
 class TermAdmin(admin.ModelAdmin):
     list_display = ('name', 'start_date', 'end_date')
-    search_fields = ('name',)
     list_filter = ('start_date', 'end_date')
+    search_fields = ('name',)
 
 
 @admin.register(Lesson)
@@ -79,3 +82,9 @@ class LessonAdmin(admin.ModelAdmin):
     list_display = ('booking', 'date', 'start_time', 'duration')
     list_filter = ('date',)
     search_fields = ('booking__student__username', 'booking__tutor__user__username', 'booking__language__name')
+
+@admin.register(Specialization)
+class SpecializationAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+

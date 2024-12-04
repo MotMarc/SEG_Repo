@@ -38,5 +38,7 @@ urlpatterns = [
     
     # ...
     path('tutor/profile/', views.tutor_profile, name='tutor_profile'),
+    #user view bookings
+    path('view-bookings/', views.view_bookings, name='view_bookings'),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)   

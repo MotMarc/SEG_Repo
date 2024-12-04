@@ -20,11 +20,10 @@
         {% else %}
             <!-- Student-Specific Links -->
             <li><a href="{% url 'create_booking' %}">Request a Booking</a></li>
-            <li><a href="{% url 'dashboard' %}">View Your Bookings</a></li>
+            <li><a href="{% url 'view_bookings' %}">View Your Bookings</a></li>
         {% endif %}
 
         <!-- Common Links for All Users -->
-        <!-- "Change Password" link removed -->
         <li><a href="{% url 'log_out' %}">Log Out</a></li>
     </ul>
 </nav>

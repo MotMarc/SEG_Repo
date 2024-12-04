@@ -8,12 +8,11 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, UserForm, SignUpForm, TutorProfileForm, BookingForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, UserForm, SignUpForm, TutorProfileForm, BookingForm, AdminBookingForm
 from tutorials.helpers import login_prohibited
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import User, Booking, Tutor, Language, Term, Lesson
 from django.contrib.admin.views.decorators import staff_member_required
-
 
 @login_required
 def dashboard(request):
@@ -168,31 +167,18 @@ class SignUpView(LoginProhibitedMixin, FormView):
 #Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
-    """Handle the creation of a booking with a tutor."""
     if request.method == 'POST':
         form = BookingForm(request.POST)
         if form.is_valid():
             booking = form.save(commit=False)
             booking.student = request.user
-
-            # Validate the regular sessions rule
-            overlapping_bookings = Booking.objects.filter(
-                tutor=booking.tutor,
-                term=booking.term,
-                day_of_week=booking.day_of_week,  # Compare the day of the week
-                start_time=booking.start_time,
-                frequency=booking.frequency,
-                status=Booking.ACCEPTED,
-            )
-            if overlapping_bookings.exists():
-                messages.error(request, "This tutor is already booked at the selected time and day.")
-            else:
-                booking.save()
-                messages.success(request, "Your booking request has been submitted.")
-                return redirect('dashboard')
+            booking.save()
+            messages.success(request, "Booking created successfully!")
+            return redirect('dashboard')
+        else:
+            messages.error(request, "Please correct the errors.")
     else:
         form = BookingForm()
-
     return render(request, 'create_booking.html', {'form': form})
 
 #pending booking views
@@ -243,23 +229,45 @@ def update_booking_status(request, booking_id, new_status):
 #...
 @login_required
 def tutor_profile(request):
-    """Allow tutors to select the languages they can teach."""
+    """Allow tutors to select the languages and specializations they can teach."""
     user = request.user
 
-    # Check if the user is a tutor
     if not user.is_tutor:
         messages.error(request, "You must be a tutor to access this page.")
         return redirect('dashboard')
 
-    tutor = user.tutor  # Get the Tutor instance associated with the user
+    tutor = user.tutor
 
     if request.method == 'POST':
         form = TutorProfileForm(request.POST, instance=tutor)
         if form.is_valid():
             form.save()
-            messages.success(request, "Your teaching languages have been updated.")
+            messages.success(request, "Your teaching profile has been updated.")
             return redirect('dashboard')
     else:
         form = TutorProfileForm(instance=tutor)
 
     return render(request, 'tutor_profile.html', {'form': form})
+
+@staff_member_required
+def admin_create_booking(request):
+    if request.method == 'POST':
+        form = AdminBookingForm(request.POST)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            booking.status = Booking.ACCEPTED
+            booking.save()
+            messages.success(request, "Booking created successfully!")
+            return redirect('admin_pending_bookings')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = AdminBookingForm()
+    return render(request, 'admin_create_booking.html', {'form': form})
+
+
+@login_required
+def view_bookings(request):
+    """Display all bookings for the logged-in user."""
+    bookings = Booking.objects.filter(student=request.user).order_by('term__start_date', 'day_of_week', 'start_time')
+    return render(request, 'view_bookings.html', {'bookings': bookings})
