@@ -5,6 +5,7 @@ The members of the team are:
 - Marc-Adrian Mot
 - Junjie Zhou
 - Mert Ayranci 
+- David
 - *enter full name 4 here*
 - *Hassan Muddassir*
 
