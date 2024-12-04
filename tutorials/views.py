@@ -1,15 +1,46 @@
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
-from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
+from tutorials.forms import LogInForm, PasswordForm, SignUpForm, UserForm
 from tutorials.helpers import login_prohibited
+
+from .models import (Invoice, Lesson, LessonRequest, TutorApplication,
+                     UserProfile)
+
+
+@staff_member_required
+def review_tutor_application(request, application_id, action):
+    """Allow admins to approve or reject tutor applications."""
+    application = get_object_or_404(TutorApplication, id=application_id)
+    if action == 'approve':
+        application.status = 'approved'
+        application.user.profile.role = 'tutor'
+        application.user.profile.save()
+    elif action == 'reject':
+        application.status = 'rejected'
+    application.save()
+    messages.success(request, f"The application has been {action}d.")
+    return redirect('admin_dashboard')
+
+@login_required
+def apply_tutor(request):
+    """Allow users to apply to become a tutor."""
+    user = request.user
+    if hasattr(user, 'tutor_application'):
+        messages.error(request, "You have already applied to become a tutor.")
+        return redirect('dashboard')
+
+    TutorApplication.objects.create(user=user)
+    messages.success(request, "Your application to become a tutor has been submitted.")
+    return redirect('dashboard')
 
 #from
 from .forms import BookingForm
@@ -17,10 +48,34 @@ from .models import Tutor, Booking
 
 @login_required
 def dashboard(request):
-    """Display the current user's dashboard."""
+    """Display the current user's dashboard with detailed information."""
 
     current_user = request.user
-    return render(request, 'dashboard.html', {'user': current_user})
+    congratulation_message = "Welcome to your personalized dashboard!"
+
+    # 获取用户额外信息
+    profile = get_object_or_404(UserProfile, user=current_user)
+
+    # 获取用户相关数据
+    lesson_requests = LessonRequest.objects.filter(student=current_user)
+    lessons_as_tutor = Lesson.objects.filter(tutor=current_user)
+    invoices = Invoice.objects.filter(lesson__tutor=current_user)
+
+    # Tutor 申请状态
+    tutor_application = None
+    if hasattr(current_user, 'tutor_application'):
+        tutor_application = current_user.tutor_application
+
+    context = {
+        'user': current_user,
+        'profile': profile,
+        'lesson_requests': lesson_requests,
+        'lessons_as_tutor': lessons_as_tutor,
+        'invoices': invoices,
+        'congratulation_message': congratulation_message,
+        'tutor_application': tutor_application,
+    }
+    return render(request, 'dashboard.html', context)
 
 
 @login_prohibited
@@ -156,6 +211,7 @@ class SignUpView(LoginProhibitedMixin, FormView):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
 
+
     #...Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
@@ -172,3 +228,4 @@ def create_booking(request):
         form.fields['tutor'].queryset = Tutor.objects.all()  
 
     return render(request, 'tutorials/create_booking.html', {'form': form})  
+
