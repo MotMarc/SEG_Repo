@@ -5,7 +5,7 @@ The members of the team are:
 - Marc-Adrian Mot
 - Junjie Zhou
 - Mert Ayranci 
-- *enter full name 4 here*
+- Chengang Shen
 - *Hassan Muddassir*
 
 ## Project structure
