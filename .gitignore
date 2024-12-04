@@ -1,0 +1,21 @@
+# 忽略所有的 .log 文件
+*.log
+
+# 忽略所有的 .pyc 文件
+*.pyc
+
+# 忽略虚拟环境文件夹
+venv/
+
+# 忽略数据库文件
+db.sqlite3
+
+# 忽略 IDE 配置文件
+.idea/
+.vscode/
+
+# 忽略编译文件
+*.o
+*.a
+
+tutorials/migrations/*
