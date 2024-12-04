@@ -6,7 +6,6 @@ The members of the team are:
 - Junjie Zhou
 - Mert Ayranci 
 - Chengang Shen
-
 - *Hassan Muddassir*
 
 ## Project structure
