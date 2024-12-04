@@ -42,6 +42,10 @@ def apply_tutor(request):
     messages.success(request, "Your application to become a tutor has been submitted.")
     return redirect('dashboard')
 
+#from
+from .forms import BookingForm
+from .models import Tutor, Booking
+
 @login_required
 def dashboard(request):
     """Display the current user's dashboard with detailed information."""
@@ -206,4 +210,22 @@ class SignUpView(LoginProhibitedMixin, FormView):
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
+
+
+    #...Handle the creation of a booking with a tutor.
+@login_required
+def create_booking(request):
+    if request.method == 'POST':
+        form = BookingForm(request.POST)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            booking.student = request.user  
+            booking.save()
+            messages.success(request, "Your booking was successful!")
+            return redirect('dashboard')  
+    else:
+        form = BookingForm()
+        form.fields['tutor'].queryset = Tutor.objects.all()  
+
+    return render(request, 'tutorials/create_booking.html', {'form': form})  
 

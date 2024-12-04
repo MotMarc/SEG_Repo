@@ -32,5 +32,7 @@ urlpatterns = [
         path('apply_tutor/', views.apply_tutor, name='apply_tutor'),
     path('admin/review_tutor_application/<int:application_id>/<str:action>/', 
          views.review_tutor_application, name='review_tutor_application'),
+    #booking url...
+    path('create-booking/', views.create_booking, name='create_booking'),
 ]
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)   

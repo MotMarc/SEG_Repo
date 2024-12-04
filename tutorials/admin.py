@@ -1,8 +1,7 @@
 from django.contrib import admin
-
 from .models import (Invoice, Lesson, LessonRequest, TutorApplication, User,
                      UserProfile)
-
+from .models import Booking, Tutor, Language
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -56,3 +55,13 @@ class TutorApplicationAdmin(admin.ModelAdmin):
     
     approve_application.short_description = "Approve selected applications"
     reject_application.short_description = "Reject selected applications"
+
+#booking
+@admin.register(Booking)
+class BookingAdmin(admin.ModelAdmin):
+    list_display = ('student', 'tutor', 'language', 'booking_time', 'status')  # Add more fields if necessary
+    search_fields = ('student__username', 'tutor__user__username', 'language__name')
+
+admin.site.register(Tutor)
+admin.site.register(Language)
+  
