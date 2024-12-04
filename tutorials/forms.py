@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Booking
+from .models import User
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -108,13 +108,3 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
-    
-#Form for students to create a booking with a tutor.
-class BookingForm(forms.ModelForm):
-
-    class Meta:
-        model = Booking
-        fields = ['tutor', 'language', 'booking_time']
-        widgets = {
-            'booking_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }  

@@ -9,4 +9,4 @@ def login_prohibited(view_function):
             return redirect(settings.REDIRECT_URL_WHEN_LOGGED_IN)
         else:
             return view_function(request)
-    return modified_view_function  
+    return modified_view_function

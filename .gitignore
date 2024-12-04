@@ -17,3 +17,5 @@ db.sqlite3
 # 忽略编译文件
 *.o
 *.a
+
+tutorials/migrations/*
