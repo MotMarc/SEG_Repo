@@ -83,3 +83,16 @@ class Booking(models.Model):
             f"Booking by {self.student.username} with {self.tutor.user.username} "
             f"for {self.language.name} at {self.booking_time} (Status: {self.status})"
         )  
+    
+class Invoice(models.Model):
+
+    booking = models.ForeignKey('Booking', on_delete = models.CASCADE)
+    amount = models.DecimalField(max_digits = 10, decimal_places = 2, blank = True, null = True)
+    is_paid = models.BooleanField(default = False)
+
+    def save(self, *args, **kwargs):
+        if self.booking:
+            tutor = self.booking.tutor
+            student = self.booking.student
+            self.amount = 0
+        super().save(*args, **kwargs)

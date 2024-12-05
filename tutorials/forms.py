@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Booking
+from .models import User, Booking, Invoice
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -118,3 +118,25 @@ class BookingForm(forms.ModelForm):
         widgets = {
             'booking_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }  
+
+#Form for admins to create an invoice
+class InvoiceForm(forms.ModelForm):
+
+
+    class Meta:
+        model = Invoice
+        fields = ['tutor', 'student', 'amount', 'is_paid']
+        widgets = {
+            'amount': forms.NumberInput(attrs={'readonly': 'readonly'})
+        }
+    
+    def save(self, commit = True):
+        instance = super().save(commit = False)
+        if instance.booking:
+            tutor = instance.booking.tutor
+            student = instance.booking.student
+            instance.amount = 0
+        if commit:
+            instance.save()
+        return instance
+

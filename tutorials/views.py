@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect, render, get_object_or_404
@@ -12,7 +12,7 @@ from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
 
 #from
-from .forms import BookingForm
+from .forms import BookingForm, InvoiceForm
 from .models import Tutor, Booking
 
 @login_required
@@ -172,3 +172,17 @@ def create_booking(request):
         form.fields['tutor'].queryset = Tutor.objects.all()  
 
     return render(request, 'tutorials/create_booking.html', {'form': form})  
+
+def is_admin(user):
+    return user.is_staff
+
+@user_passes_test(is_admin)
+def create_invoice(request):
+    if request.method == 'POST':
+        form = InvoiceForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('invoice_list')
+    else:
+        form = InvoiceForm()
+    return render(request, 'tutorials/invoices.html', {'form': form})
