@@ -63,12 +63,13 @@ class Specialization(models.Model):
 
 class Tutor(models.Model):
     """Represents a tutor, extending the user with additional information."""
-    user = models.OneToOneField('User', on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     languages = models.ManyToManyField('Language', related_name='tutors')
     specializations = models.ManyToManyField('Specialization', related_name='specialized_tutors', blank=True)
 
     def __str__(self):
-        return f'Tutor: {self.user.full_name()}'
+        return f"{self.user.first_name} {self.user.last_name}"
+
 
 
 class Term(models.Model):
@@ -118,6 +119,7 @@ class Booking(models.Model):
         (DECLINED, 'Declined'),
     ]
 
+    # Student Approval Choices
     STUDENT_APPROVAL_PENDING = 'Pending'
     STUDENT_APPROVED = 'Approved'
     STUDENT_REJECTED = 'Rejected'
@@ -126,6 +128,42 @@ class Booking(models.Model):
         (STUDENT_APPROVED, 'Approved'),
         (STUDENT_REJECTED, 'Rejected'),
     ]
+
+    # Tutor Approval Choices
+    TUTOR_APPROVAL_PENDING = 'Pending'
+    TUTOR_APPROVED = 'Approved'
+    TUTOR_REJECTED = 'Rejected'
+    TUTOR_APPROVAL_CHOICES = [
+        (TUTOR_APPROVAL_PENDING, 'Pending Approval'),
+        (TUTOR_APPROVED, 'Approved'),
+        (TUTOR_REJECTED, 'Rejected'),
+    ]
+
+    tutor_approval = models.CharField(
+        max_length=10,
+        choices=TUTOR_APPROVAL_CHOICES,
+        default=TUTOR_APPROVAL_PENDING,
+        verbose_name='Tutor Approval'
+    )
+
+    def is_fully_approved(self):
+        """Check if both student and tutor have approved the booking."""
+        return self.student_approval == self.STUDENT_APPROVED and self.tutor_approval == self.TUTOR_APPROVED
+
+    def is_rejected(self):
+        """Check if either student or tutor has rejected the booking."""
+        return self.student_approval == self.STUDENT_REJECTED or self.tutor_approval == self.TUTOR_REJECTED
+
+
+    def save(self, *args, **kwargs):
+        """Override save to update status based on student and tutor approvals."""
+        if self.student_approval == self.STUDENT_APPROVED and self.tutor_approval == self.TUTOR_APPROVED:
+            self.status = self.ACCEPTED
+        elif self.student_approval == self.STUDENT_REJECTED or self.tutor_approval == self.TUTOR_REJECTED:
+            self.status = self.DECLINED
+        else:
+            self.status = self.PENDING
+        super().save(*args, **kwargs)
 
     DAYS_OF_WEEK = [
         ('Monday', 'Monday'),
@@ -144,13 +182,9 @@ class Booking(models.Model):
         (FORTNIGHTLY, 'Fortnightly'),
     ]
 
-    tutor = models.ForeignKey(
-        'Tutor',
-        on_delete=models.CASCADE,
-        related_name='bookings',
-        verbose_name='Tutor',
-        null=True
-    )
+    
+    tutor = models.ForeignKey(Tutor, related_name='tutor_bookings', on_delete=models.CASCADE, null=True, blank=True)
+
 
     specialization = models.ForeignKey(
         'Specialization',
@@ -306,8 +340,8 @@ class Booking(models.Model):
         return self.student_approval == self.STUDENT_APPROVAL_PENDING
 
     def __str__(self):
-        return f'Booking {self.id}: {self.student.full_name()} with {self.tutor.user.full_name()} for {self.language.name}'
-
+        tutor_name = self.tutor.user.full_name() if self.tutor else "No Tutor Assigned"
+        return f'Booking {self.id}: {self.student.full_name()} with {tutor_name} for {self.language.name}'
 
 class Lesson(models.Model):
     """Represents a lesson generated from a booking."""

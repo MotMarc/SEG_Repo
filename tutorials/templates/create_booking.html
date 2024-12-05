@@ -1,3 +1,5 @@
+<!-- templates/create_booking.html -->
+
 {% extends 'base_content.html' %}
 
 {% block content %}
@@ -21,15 +23,6 @@
         {{ form.day_of_week.label_tag }}
         {{ form.day_of_week }}
         {% for error in form.day_of_week.errors %}
-            <div class="text-danger">{{ error }}</div>
-        {% endfor %}
-    </div>
-
-    <!-- Tutor Field -->
-    <div class="form-group">
-        {{ form.tutor.label_tag }}
-        {{ form.tutor }}
-        {% for error in form.tutor.errors %}
             <div class="text-danger">{{ error }}</div>
         {% endfor %}
     </div>

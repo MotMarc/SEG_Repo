@@ -115,13 +115,7 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
 
 
 class BookingForm(forms.ModelForm):
-    """Form for students to create a booking with a tutor."""
-
-    tutor = forms.ModelChoiceField(
-        queryset=Tutor.objects.all(),
-        required=True,
-        label="Select Tutor"
-    )
+    """Form for students to create a booking without selecting a tutor."""
 
     specialization = forms.ModelChoiceField(
         queryset=Specialization.objects.all(),
@@ -131,7 +125,17 @@ class BookingForm(forms.ModelForm):
 
     class Meta:
         model = Booking
-        fields = ['tutor', 'language', 'specialization', 'term', 'day_of_week', 'start_time', 'duration', 'frequency', 'experience_level']
+        # Exclude 'tutor' from the fields
+        fields = [
+            'language',
+            'specialization',
+            'term',
+            'day_of_week',
+            'start_time',
+            'duration',
+            'frequency',
+            'experience_level'
+        ]
         widgets = {
             'day_of_week': forms.Select(attrs={'class': 'form-control'}),
             'term': forms.Select(attrs={'class': 'form-control'}),
@@ -146,33 +150,20 @@ class BookingForm(forms.ModelForm):
         }
 
     def clean(self):
-        """Custom validation for overlapping bookings and specialization compatibility."""
+        """Custom validation for specialization compatibility."""
         cleaned_data = super().clean()
-        tutor = cleaned_data.get('tutor')
         specialization = cleaned_data.get('specialization')
-        term = cleaned_data.get('term')
-        day_of_week = cleaned_data.get('day_of_week')
-        start_time = cleaned_data.get('start_time')
-        duration = cleaned_data.get('duration')
+        language = cleaned_data.get('language')
 
-        # Validate specialization compatibility
-        if specialization and tutor and not tutor.specializations.filter(id=specialization.id).exists():
-            self.add_error('specialization', f"The selected tutor does not offer specialization in {specialization}.")
-
-        # Validate overlapping bookings
-        if tutor and term and day_of_week and start_time and duration:
-            end_time = (datetime.combine(datetime.today(), start_time) + duration).time()
-            overlapping_bookings = Booking.objects.filter(
-                tutor=tutor,
-                term=term,
-                day_of_week=day_of_week,
-                start_time__lt=end_time,
-                start_time__gte=start_time,
-                status=Booking.ACCEPTED,
-            ).exclude(pk=self.instance.pk)
-
-            if overlapping_bookings.exists():
-                self.add_error(None, "This tutor is already booked for the selected time.")
+        # If specialization is selected, ensure it relates to the chosen language
+        if specialization and language:
+            # Example validation: Ensure specialization is relevant to the language
+            # Adjust this logic based on your actual requirements
+            if not specialization.name.lower() in language.name.lower():
+                self.add_error(
+                    'specialization',
+                    f"The specialization '{specialization}' is not applicable to the language '{language}'."
+                )
 
         return cleaned_data
 
@@ -200,14 +191,8 @@ class AdminBookingForm(forms.ModelForm):
 
     tutor = forms.ModelChoiceField(
         queryset=Tutor.objects.all(),
-        required=True,
+        required=True,  # Make tutor selection mandatory
         label="Select Tutor"
-    )
-
-    student = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_staff=False),
-        required=True,
-        label="Select Student"
     )
 
     class Meta:
@@ -220,6 +205,12 @@ class AdminBookingForm(forms.ModelForm):
             'duration': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'frequency': forms.Select(attrs={'class': 'form-control'}),
         }
+
+    def clean_tutor(self):
+        tutor = self.cleaned_data.get('tutor')
+        if not tutor:
+            raise forms.ValidationError("Please select a tutor for the booking.")
+        return tutor
 
     def clean(self):
         """Custom validation to ensure no overlapping bookings."""
