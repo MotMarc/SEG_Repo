@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
 from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
 from datetime import datetime, timedelta
+from django.core.exceptions import ValidationError
 
 
 class LogInForm(forms.Form):
@@ -31,6 +32,7 @@ class UserForm(forms.ModelForm):
 
         model = User
         fields = ['first_name', 'last_name', 'username', 'email']
+
 
 class NewPasswordMixin(forms.Form):
     """Form mixing for new_password and password_confirmation fields."""
@@ -110,8 +112,7 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
-    
-#Form for students to create a booking for a language with a tutor.
+
 
 class BookingForm(forms.ModelForm):
     """Form for students to create a booking with a tutor."""
@@ -143,17 +144,6 @@ class BookingForm(forms.ModelForm):
                 'class': 'form-control',
             }),
         }
-        labels = {
-            'tutor': 'Select Tutor',
-            'language': 'Select Language',
-            'specialization': 'Specialized Session (Optional)',
-            'term': 'Select Term',
-            'day_of_week': 'Select Booking Date',
-            'start_time': 'Start Time',
-            'duration': 'Lesson Duration',
-            'frequency': 'Lesson Frequency',
-            'experience_level': 'Experience Level',
-        }
 
     def clean(self):
         """Custom validation for overlapping bookings and specialization compatibility."""
@@ -167,7 +157,7 @@ class BookingForm(forms.ModelForm):
 
         # Validate specialization compatibility
         if specialization and tutor and not tutor.specializations.filter(id=specialization.id).exists():
-            raise forms.ValidationError(f"The selected tutor does not offer specialization in {specialization}.")
+            self.add_error('specialization', f"The selected tutor does not offer specialization in {specialization}.")
 
         # Validate overlapping bookings
         if tutor and term and day_of_week and start_time and duration:
@@ -176,13 +166,13 @@ class BookingForm(forms.ModelForm):
                 tutor=tutor,
                 term=term,
                 day_of_week=day_of_week,
-                status=Booking.ACCEPTED,
-            ).filter(
                 start_time__lt=end_time,
-                start_time__gte=(datetime.combine(datetime.today(), start_time) - timedelta(minutes=1)).time(),
-            )
+                start_time__gte=start_time,
+                status=Booking.ACCEPTED,
+            ).exclude(pk=self.instance.pk)
+
             if overlapping_bookings.exists():
-                raise forms.ValidationError("This tutor is already booked at the selected time.")
+                self.add_error(None, "This tutor is already booked for the selected time.")
 
         return cleaned_data
 
@@ -204,7 +194,7 @@ class TutorProfileForm(forms.ModelForm):
         model = Tutor
         fields = ['languages', 'specializations']
 
-#.......
+
 class AdminBookingForm(forms.ModelForm):
     """Form for admins to create a booking."""
 
@@ -215,53 +205,30 @@ class AdminBookingForm(forms.ModelForm):
     )
 
     student = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_staff=False),  # Assuming non-staff users are students
+        queryset=User.objects.filter(is_staff=False),
         required=True,
         label="Select Student"
     )
 
     class Meta:
         model = Booking
-        fields = ['student', 'tutor', 'language', 'specialization', 'term', 'day_of_week', 'start_time', 'duration', 'frequency', 'experience_level']
+        fields = ['student', 'tutor', 'language', 'specialization', 'term', 'day_of_week', 'start_time', 'duration', 'frequency']
         widgets = {
             'day_of_week': forms.Select(attrs={'class': 'form-control'}),
             'term': forms.Select(attrs={'class': 'form-control'}),
             'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'duration': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'frequency': forms.Select(attrs={'class': 'form-control'}),
-            'experience_level': forms.Textarea(attrs={
-                'rows': 3,
-                'placeholder': 'Write about your experience level in maximum 100 words.',
-                'class': 'form-control',
-            }),
-        }
-        labels = {
-            'student': 'Select Student',
-            'tutor': 'Select Tutor',
-            'language': 'Select Language',
-            'specialization': 'Specialized Session (Optional)',
-            'term': 'Select Term',
-            'day_of_week': 'Select Booking Date',
-            'start_time': 'Start Time',
-            'duration': 'Lesson Duration',
-            'frequency': 'Lesson Frequency',
-            'experience_level': 'Experience Level',
         }
 
     def clean(self):
-        """Custom validation for overlapping bookings and specialization compatibility."""
+        """Custom validation to ensure no overlapping bookings."""
         cleaned_data = super().clean()
         tutor = cleaned_data.get('tutor')
-        student = cleaned_data.get('student')
-        specialization = cleaned_data.get('specialization')
         term = cleaned_data.get('term')
         day_of_week = cleaned_data.get('day_of_week')
         start_time = cleaned_data.get('start_time')
         duration = cleaned_data.get('duration')
-
-        # Validate specialization compatibility
-        if specialization and tutor and not tutor.specializations.filter(id=specialization.id).exists():
-            raise forms.ValidationError(f"The selected tutor does not offer specialization in {specialization}.")
 
         # Validate overlapping bookings
         if tutor and term and day_of_week and start_time and duration:
@@ -270,12 +237,12 @@ class AdminBookingForm(forms.ModelForm):
                 tutor=tutor,
                 term=term,
                 day_of_week=day_of_week,
-                status=Booking.ACCEPTED,
-            ).filter(
                 start_time__lt=end_time,
-                start_time__gte=(datetime.combine(datetime.today(), start_time) - timedelta(minutes=1)).time(),
-            )
+                start_time__gte=start_time,
+                status=Booking.ACCEPTED,
+            ).exclude(pk=self.instance.pk)
+
             if overlapping_bookings.exists():
-                raise forms.ValidationError("This tutor is already booked at the selected time.")
+                self.add_error(None, "This tutor is already booked for the selected time.")
 
         return cleaned_data

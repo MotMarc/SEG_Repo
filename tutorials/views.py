@@ -13,6 +13,8 @@ from tutorials.helpers import login_prohibited
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import User, Booking, Tutor, Language, Term, Lesson
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.exceptions import ValidationError
+
 
 @login_required
 def dashboard(request):
@@ -20,16 +22,6 @@ def dashboard(request):
 
     current_user = request.user
     return render(request, 'dashboard.html', {'user': current_user})
-
-    # if user.is_tutor:
-    #     # User is a tutor; fetch their lessons
-    #     lessons = Lesson.objects.filter(booking__tutor__user=user).order_by('date', 'start_time')
-    #     return render(request, 'tutor_dashboard.html', {'lessons': lessons})
-    # else:
-    #     # User is a student; fetch their bookings
-    #     bookings = Booking.objects.filter(student=user).order_by('term__start_date')
-    #     return render(request, 'student_dashboard.html', {'bookings': bookings})
-
 
 @login_prohibited
 def home(request):
@@ -167,19 +159,26 @@ class SignUpView(LoginProhibitedMixin, FormView):
 #Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
+    """Allow students to create a booking with a tutor."""
     if request.method == 'POST':
         form = BookingForm(request.POST)
         if form.is_valid():
-            booking = form.save(commit=False)
-            booking.student = request.user
-            booking.save()
-            messages.success(request, "Booking created successfully!")
-            return redirect('dashboard')
+            try:
+                booking = form.save(commit=False)
+                booking.student = request.user
+                booking.save()
+                messages.success(request, "Booking created successfully!")
+                return redirect('dashboard')
+            except ValidationError as e:
+                form.add_error(None, e)  # Add the error to the form
         else:
             messages.error(request, "Please correct the errors.")
     else:
         form = BookingForm()
+
     return render(request, 'create_booking.html', {'form': form})
+
+
 
 #pending booking views
 @staff_member_required
@@ -255,9 +254,10 @@ def admin_create_booking(request):
         form = AdminBookingForm(request.POST)
         if form.is_valid():
             booking = form.save(commit=False)
-            booking.status = Booking.ACCEPTED
+            booking.status = Booking.PENDING  # Booking is pending admin approval
+            booking.student_approval = Booking.PENDING_APPROVAL  # Mark as pending student approval
             booking.save()
-            messages.success(request, "Booking created successfully!")
+            messages.success(request, "Booking created successfully! Awaiting student approval.")
             return redirect('admin_pending_bookings')
         else:
             messages.error(request, "Please correct the errors below.")
@@ -265,9 +265,42 @@ def admin_create_booking(request):
         form = AdminBookingForm()
     return render(request, 'admin_create_booking.html', {'form': form})
 
-
 @login_required
 def view_bookings(request):
     """Display all bookings for the logged-in user."""
     bookings = Booking.objects.filter(student=request.user).order_by('term__start_date', 'day_of_week', 'start_time')
     return render(request, 'view_bookings.html', {'bookings': bookings})
+
+
+@login_required
+def pending_student_bookings(request):
+    """Display bookings awaiting student approval."""
+    student = request.user
+    if not student.is_authenticated or student.is_staff:
+        return HttpResponseForbidden("Only students can access this page.")
+
+    pending_bookings = Booking.objects.filter(student=student, student_approval=Booking.PENDING_APPROVAL)
+    return render(request, 'pending_student_bookings.html', {'pending_bookings': pending_bookings})
+
+
+@login_required
+def student_approve_booking(request, booking_id):
+    """Handle student approval or rejection of a booking."""
+    booking = get_object_or_404(Booking, id=booking_id, student=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            booking.student_approval = Booking.APPROVED
+            booking.status = Booking.ACCEPTED  # Optionally update the status to Accepted
+            booking.save()
+            messages.success(request, "Booking approved successfully!")
+        elif action == 'reject':
+            booking.student_approval = Booking.REJECTED
+            booking.status = Booking.DECLINED  # Optionally update the status to Declined
+            booking.save()
+            messages.success(request, "Booking rejected successfully!")
+        else:
+            messages.error(request, "Invalid action.")
+    
+    return redirect('pending_student_bookings')

@@ -1,0 +1,28 @@
+{% extends 'base_content.html' %}
+
+{% block content %}
+<h2>Pending Bookings for Approval</h2>
+
+{% if pending_bookings %}
+    <ul>
+        {% for booking in pending_bookings %}
+            <li>
+                <strong>Tutor:</strong> {{ booking.tutor.user.full_name }} <br>
+                <strong>Language:</strong> {{ booking.language.name }} <br>
+                <strong>Term:</strong> {{ booking.term.name }} <br>
+                <strong>Status:</strong> {{ booking.status }} <br>
+
+                <!-- Approve/Reject Buttons -->
+                <form method="post" action="{% url 'student_approve_booking' booking.id %}">
+                    {% csrf_token %}
+                    <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No bookings awaiting your approval.</p>
+{% endif %}
+
+{% endblock %}

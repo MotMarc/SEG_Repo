@@ -9,11 +9,9 @@
     <ul>
         {% if user.is_staff %}
             <!-- Admin-Specific Links -->
-            <li><a href="{% url 'admin_pending_bookings' %}">Manage Pending Bookings</a></li>
             <li><a href="{% url 'admin:index' %}">Admin Dashboard</a></li>
-        {% endif %}
-
-        {% if user.is_tutor %}
+            <li><a href="{% url 'admin_pending_bookings' %}">Manage Pending Bookings</a></li>
+        {% elif user.is_tutor %}
             <!-- Tutor-Specific Links -->
             <li><a href="{% url 'tutor_profile' %}">Update Teaching Languages</a></li>
             <li><a href="{% url 'dashboard' %}">View Scheduled Lessons</a></li>
@@ -27,14 +25,5 @@
         <li><a href="{% url 'log_out' %}">Log Out</a></li>
     </ul>
 </nav>
-
-<!-- Optional: Display Messages -->
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
 
 {% endblock %}

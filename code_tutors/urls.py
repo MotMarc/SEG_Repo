@@ -35,10 +35,16 @@ urlpatterns = [
     path('bookings/admin/pending/', views.pending_bookings, name='admin_pending_bookings'),
     path('bookings/admin/pending/approve/<int:booking_id>/', views.approve_booking, name='approve_booking'),
     path('bookings/admin/pending/decline/<int:booking_id>/', views.decline_booking, name='decline_booking'),
-    
+    path('bookings/admin/create/', views.admin_create_booking, name='admin_create_booking'),
+    path('admin/bookings/create/', views.admin_create_booking, name='admin_create_booking'),
+
     # ...
     path('tutor/profile/', views.tutor_profile, name='tutor_profile'),
     #user view bookings
     path('view-bookings/', views.view_bookings, name='view_bookings'),
+
+    path('bookings/student/pending/', views.pending_student_bookings, name='pending_student_bookings'),
+    path('bookings/student/approve/<int:booking_id>/', views.student_approve_booking, name='student_approve_booking'),
+
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)   

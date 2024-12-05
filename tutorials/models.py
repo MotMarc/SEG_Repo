@@ -2,12 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 from libgravatar import Gravatar
-#...
-from django.contrib.auth import get_user_model
-from datetime import timedelta, time
 from django.core.exceptions import ValidationError
-
-
+from datetime import timedelta, time
 
 
 class User(AbstractUser):
@@ -43,12 +39,11 @@ class User(AbstractUser):
         """Return a URL to a miniature version of the user's gravatar."""
         return self.gravatar(size=60)
 
-#Define tutor
     @property
     def is_tutor(self):
+        """Check if the user is a tutor."""
         return hasattr(self, 'tutor')
-    
-#booking
+
 
 class Language(models.Model):
     """Represents a programming language that tutors can teach."""
@@ -57,7 +52,15 @@ class Language(models.Model):
     def __str__(self):
         return self.name
 
-# Define the Tutor model
+
+class Specialization(models.Model):
+    """Represents an advanced specialization that tutors can teach."""
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Tutor(models.Model):
     """Represents a tutor, extending the user with additional information."""
     user = models.OneToOneField('User', on_delete=models.CASCADE)
@@ -68,7 +71,40 @@ class Tutor(models.Model):
         return f'Tutor: {self.user.full_name()}'
 
 
-# Define booking for a language.
+class Term(models.Model):
+    """Represents an academic term."""
+    name = models.CharField(max_length=50)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def clean(self):
+        """Validate term dates."""
+        if "September" in self.name and not (9 <= self.start_date.month <= 12):
+            raise ValidationError("September-Christmas term must start between September and December.")
+        if "January" in self.name and not (1 <= self.start_date.month <= 4):
+            raise ValidationError("January-Easter term must start between January and April.")
+        if "May" in self.name and not (5 <= self.start_date.month <= 7):
+            raise ValidationError("May-July term must start between May and July.")
+
+        if self.start_date >= self.end_date:
+            raise ValidationError("Term start date must be before the end date.")
+
+    def __str__(self):
+        return self.name
+
+
+class BookingManager(models.Manager):
+    """Custom manager for filtering bookings by student approval."""
+    def pending_approval(self):
+        return self.filter(student_approval=Booking.STUDENT_APPROVAL_PENDING)
+
+    def approved(self):
+        return self.filter(student_approval=Booking.STUDENT_APPROVED)
+
+    def rejected(self):
+        return self.filter(student_approval=Booking.STUDENT_REJECTED)
+
+
 class Booking(models.Model):
     """Represents a booking for tutoring services."""
 
@@ -80,6 +116,15 @@ class Booking(models.Model):
         (PENDING, 'Pending'),
         (ACCEPTED, 'Accepted'),
         (DECLINED, 'Declined'),
+    ]
+
+    STUDENT_APPROVAL_PENDING = 'Pending'
+    STUDENT_APPROVED = 'Approved'
+    STUDENT_REJECTED = 'Rejected'
+    STUDENT_APPROVAL_CHOICES = [
+        (STUDENT_APPROVAL_PENDING, 'Pending Approval'),
+        (STUDENT_APPROVED, 'Approved'),
+        (STUDENT_REJECTED, 'Rejected'),
     ]
 
     DAYS_OF_WEEK = [
@@ -100,15 +145,15 @@ class Booking(models.Model):
     ]
 
     tutor = models.ForeignKey(
-    'Tutor',
-    on_delete=models.CASCADE,
-    related_name='bookings',
-    verbose_name='Tutor',
-    null=True  # Allow null values temporarily
+        'Tutor',
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        verbose_name='Tutor',
+        null=True
     )
 
     specialization = models.ForeignKey(
-        'Specialization',  
+        'Specialization',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -122,7 +167,7 @@ class Booking(models.Model):
         related_name='bookings_as_student',
         verbose_name='Student'
     )
-    
+
     language = models.ForeignKey(
         'Language',
         on_delete=models.CASCADE,
@@ -136,58 +181,73 @@ class Booking(models.Model):
         verbose_name='Term'
     )
     frequency = models.CharField(
-        max_length=15,  
+        max_length=15,
         choices=FREQUENCY_CHOICES,
         default=WEEKLY,
         verbose_name='Frequency'
     )
 
     status = models.CharField(
-    max_length=10,
-    choices=STATUS_CHOICES,
-    default=PENDING,
-    verbose_name='Status'
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=PENDING,
+        verbose_name='Status'
+    )
+
+    student_approval = models.CharField(
+        max_length=10,
+        choices=STUDENT_APPROVAL_CHOICES,
+        default=STUDENT_APPROVAL_PENDING,
+        verbose_name='Student Approval'
     )
 
     start_time = models.TimeField(
-        verbose_name='Start Time', 
-        null=False, blank=False, 
+        verbose_name='Start Time',
+        null=False, blank=False,
         default=time(10, 0)
-        )
+    )
 
     duration = models.DurationField(
         help_text="Duration of each lesson (e.g., 1 hour)",
         verbose_name='Duration',
-        default=timedelta(hours=1)  
+        default=timedelta(hours=1)
     )
     experience_level = models.TextField(
         verbose_name="Experience Level",
-        max_length=500, 
-        blank=True,      
+        max_length=500,
+        blank=True,
         help_text="Describe your coding experience level in 100 words or less."
     )
     day_of_week = models.CharField(
         max_length=15,
         choices=DAYS_OF_WEEK,
-        default="Monday",  # Ensure a default
+        default="Monday",
         verbose_name="Day of the Week"
     )
+
+    objects = BookingManager()  # Use custom manager
 
     class Meta:
         ordering = ['term__start_date', 'day_of_week', 'start_time']
         verbose_name = 'Booking'
         verbose_name_plural = 'Bookings'
         constraints = [
-        models.UniqueConstraint(
-        fields=['tutor', 'term', 'day_of_week', 'start_time'],
-        condition=models.Q(status='Accepted'),
-        name='unique_tutor_booking_per_time'
+            models.UniqueConstraint(
+                fields=['tutor', 'term', 'day_of_week', 'start_time'],
+                condition=models.Q(status='Accepted'),
+                name='unique_tutor_booking_per_time'
             )
-    ]
+        ]
 
     def clean(self):
-        """Validate that the booking's date is within the term and does not overlap."""
-        # Ensure the booking's day of the week aligns with the term's date range
+        """Validate that the booking's fields are correct and consistent."""
+        if not self.term_id:
+            raise ValidationError({'term': 'Please select a term.'})
+
+        if self.specialization and self.tutor:
+            if not self.tutor.specializations.filter(id=self.specialization.id).exists():
+                raise ValidationError({'specialization': f"The selected tutor does not offer specialization in {self.specialization}."})
+
         term_start = self.term.start_date
         term_end = self.term.end_date
         booking_date = self.calculate_booking_date(term_start)
@@ -195,7 +255,6 @@ class Booking(models.Model):
         if booking_date < term_start or booking_date > term_end:
             raise ValidationError(f"Booking date {booking_date} must fall within the term dates {term_start} to {term_end}.")
 
-        # Validate no overlapping bookings for the same tutor
         overlapping_bookings = Booking.objects.filter(
             tutor=self.tutor,
             term=self.term,
@@ -224,13 +283,34 @@ class Booking(models.Model):
         ])}
         return days[day_name]
 
+    def approve_by_student(self):
+        """Approve booking by the student."""
+        self.student_approval = self.STUDENT_APPROVED
+        self.save()
+
+    def reject_by_student(self):
+        """Reject booking by the student."""
+        self.student_approval = self.STUDENT_REJECTED
+        self.save()
+
+    def is_approved(self):
+        """Check if the booking is approved."""
+        return self.student_approval == self.STUDENT_APPROVED
+
+    def is_rejected(self):
+        """Check if the booking is rejected."""
+        return self.student_approval == self.STUDENT_REJECTED
+
+    def is_pending_approval(self):
+        """Check if the booking is pending approval."""
+        return self.student_approval == self.STUDENT_APPROVAL_PENDING
+
     def __str__(self):
         return f'Booking {self.id}: {self.student.full_name()} with {self.tutor.user.full_name()} for {self.language.name}'
 
-#...
-
 
 class Lesson(models.Model):
+    """Represents a lesson generated from a booking."""
     booking = models.ForeignKey('Booking', on_delete=models.CASCADE)
     date = models.DateField()
     start_time = models.TimeField()
@@ -238,33 +318,3 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f'Lesson on {self.date} at {self.start_time}'
-    
-#....
-class Specialization(models.Model):
-    """Represents an advanced specialization that tutors can teach."""
-    name = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.name
-    
-
-class Term(models.Model):
-    """Represents an academic term."""
-    name = models.CharField(max_length=50)
-    start_date = models.DateField()
-    end_date = models.DateField()
-
-    def clean(self):
-        """Validate term dates to follow the London State School Calendar."""
-        if "September" in self.name and not (9 <= self.start_date.month <= 12):
-            raise ValidationError("September-Christmas term must start between September and December.")
-        if "January" in self.name and not (1 <= self.start_date.month <= 4):
-            raise ValidationError("January-Easter term must start between January and April.")
-        if "May" in self.name and not (5 <= self.start_date.month <= 7):
-            raise ValidationError("May-July term must start between May and July.")
-
-        if self.start_date >= self.end_date:
-            raise ValidationError("Term start date must be before the end date.")
-
-    def __str__(self):
-        return self.name

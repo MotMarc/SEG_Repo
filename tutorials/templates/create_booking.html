@@ -1,90 +1,105 @@
 {% extends 'base_content.html' %}
 
 {% block content %}
-    <h2>Create a Booking</h2>
+<h2>Create a Booking</h2>
 
-    <!-- Display validation and success/error messages -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
+<!-- Booking Form -->
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <!-- Display form-wide errors -->
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    <!-- Booking Form -->
-    <form method="post" novalidate>
-        {% csrf_token %}
+    <!-- Day of the Week Field -->
+    <div class="form-group">
+        {{ form.day_of_week.label_tag }}
+        {{ form.day_of_week }}
+        {% for error in form.day_of_week.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <!-- Day of the Week Field -->
-        <div class="form-group">
-            {{ form.day_of_week.label_tag }}
-            {{ form.day_of_week }}
-            {% if form.day_of_week.errors %}
-                <div class="text-danger">{{ form.day_of_week.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Tutor Field -->
+    <div class="form-group">
+        {{ form.tutor.label_tag }}
+        {{ form.tutor }}
+        {% for error in form.tutor.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.tutor.label_tag }}
-            {{ form.tutor }}
-            {% if form.tutor.errors %}
-                <div class="text-danger">{{ form.tutor.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Language Field -->
+    <div class="form-group">
+        {{ form.language.label_tag }}
+        {{ form.language }}
+        {% for error in form.language.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.language.label_tag }}
-            {{ form.language }}
-            {% if form.language.errors %}
-                <div class="text-danger">{{ form.language.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Specialization Field -->
+    <div class="form-group">
+        {{ form.specialization.label_tag }}
+        {{ form.specialization }}
+        {% for error in form.specialization.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.term.label_tag }}
-            {{ form.term }}
-            {% if form.term.errors %}
-                <div class="text-danger">{{ form.term.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Term Field -->
+    <div class="form-group">
+        {{ form.term.label_tag }}
+        {{ form.term }}
+        {% for error in form.term.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.start_time.label_tag }}
-            {{ form.start_time }}
-            {% if form.start_time.errors %}
-                <div class="text-danger">{{ form.start_time.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Start Time Field -->
+    <div class="form-group">
+        {{ form.start_time.label_tag }}
+        {{ form.start_time }}
+        {% for error in form.start_time.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.duration.label_tag }}
-            {{ form.duration }}
-            {% if form.duration.errors %}
-                <div class="text-danger">{{ form.duration.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Duration Field -->
+    <div class="form-group">
+        {{ form.duration.label_tag }}
+        {{ form.duration }}
+        {% for error in form.duration.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.frequency.label_tag }}
-            {{ form.frequency }}
-            {% if form.frequency.errors %}
-                <div class="text-danger">{{ form.frequency.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Frequency Field -->
+    <div class="form-group">
+        {{ form.frequency.label_tag }}
+        {{ form.frequency }}
+        {% for error in form.frequency.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <div class="form-group">
-            {{ form.experience_level.label_tag }}
-            {{ form.experience_level }}
-            {% if form.experience_level.errors %}
-                <div class="text-danger">{{ form.experience_level.errors }}</div>
-            {% endif %}
-        </div>
+    <!-- Experience Level Field -->
+    <div class="form-group">
+        {{ form.experience_level.label_tag }}
+        {{ form.experience_level }}
+        {% for error in form.experience_level.errors %}
+            <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
 
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary">Book Now</button>
-    </form>
+    <!-- Submit Button -->
+    <button type="submit" class="btn btn-primary">Book Now</button>
+</form>
 
-    <!-- Back to Dashboard -->
-    <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+<a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
 {% endblock %}

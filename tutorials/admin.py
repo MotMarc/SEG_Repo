@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
 from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
 
 
@@ -11,16 +13,22 @@ class UserAdmin(admin.ModelAdmin):
 #admin booking
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('student', 'get_tutor', 'language', 'specialization', 'term', 'start_time', 'frequency', 'status')  
-    search_fields = ('student__username', 'tutor__user__username', 'language__name', 'specialization__name')
-    list_filter = ('status', 'term')  # 'status' refers to an actual field on the Booking model.
-    actions = ['approve_bookings']
+    # Specify the fields to display in the admin list view
+    list_display = ('student', 'get_tutor', 'language', 'term', 'start_time', 'frequency', 'status')  # Removed admin_create_link
 
+    # Add filter functionality
+    list_filter = ('status', 'term', 'frequency', 'language')  # Filters remain intact
+
+    # Add search functionality
+    search_fields = ('student__username', 'tutor__user__username', 'language__name', 'term__name')
+
+    # Custom method to display the tutor's full name
     def get_tutor(self, obj):
         """Return the tutor's full name for display."""
         return obj.tutor.user.full_name() if obj.tutor else "No Tutor Assigned"
     get_tutor.short_description = 'Tutor'
 
+    # Admin action to approve pending bookings
     def approve_bookings(self, request, queryset):
         """Custom admin action to approve selected bookings."""
         approved_count = 0
@@ -29,8 +37,10 @@ class BookingAdmin(admin.ModelAdmin):
             booking.save()
             approved_count += 1
         self.message_user(request, f"{approved_count} booking(s) have been approved.")
-
     approve_bookings.short_description = "Approve selected bookings"
+
+    # Specify admin actions
+    actions = ['approve_bookings']
 
     def generate_lessons(self, booking):
         """Generates lessons based on the booking's frequency and term dates."""
@@ -87,4 +97,3 @@ class LessonAdmin(admin.ModelAdmin):
 class SpecializationAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
-
