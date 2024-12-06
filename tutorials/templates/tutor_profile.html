@@ -1,22 +1,30 @@
 <!-- templates/tutor_profile.html -->
-
 {% extends 'base_content.html' %}
 
+{% block title %}Update Teaching Profile{% endblock %}
+
 {% block content %}
-    <h2>Update Teaching Profile</h2>
-    <form method="post">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <h2>Update Teaching Profile</h2>
+      <form method="post" novalidate>
         {% csrf_token %}
-        {{ form.non_field_errors }}
-        <div class="form-group">
-            {{ form.languages.label_tag }}
-            {{ form.languages }}
-            {{ form.languages.errors }}
-        </div>
-        <div class="form-group">
-            {{ form.specializations.label_tag }}
-            {{ form.specializations }}
-            {{ form.specializations.errors }}
-        </div>
-        <button type="submit" class="btn btn-success">Save</button>
-    </form>
+        
+        <!-- Display form-wide errors -->
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+              <p>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+        
+        <!-- Render the form using the bootstrap_form partial -->
+        {% include 'partials/bootstrap_form.html' with form=form %}
+        
+        <button type="submit" class="btn btn-success">Save Changes</button>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
 {% endblock %}

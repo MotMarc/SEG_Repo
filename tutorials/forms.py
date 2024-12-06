@@ -10,8 +10,11 @@ from django.core.exceptions import ValidationError
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
 
-    username = forms.CharField(label="Username")
-    password = forms.CharField(label="Password", widget=forms.PasswordInput())
+    username = forms.CharField(label="Username", widget=forms.TextInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(label="Password", widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    
+
+    
 
     def get_user(self):
         """Returns authenticated user if possible."""
