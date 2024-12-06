@@ -9,6 +9,11 @@ from datetime import timedelta, time
 class User(AbstractUser):
     """Model used for user authentication, and team member-related information."""
 
+    ACCOUNT_TYPES = [
+        ('student', 'Student'),
+        ('tutor', 'Tutor'),
+    ]
+
     username = models.CharField(
         max_length=30,
         unique=True,
@@ -20,6 +25,12 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=50, blank=False)
     last_name = models.CharField(max_length=50, blank=False)
     email = models.EmailField(unique=True, blank=False)
+    account_type = models.CharField(
+        max_length=10,
+        choices=ACCOUNT_TYPES,
+        default='student',
+        blank=False
+    )
 
     class Meta:
         """Model options."""
@@ -38,7 +49,7 @@ class User(AbstractUser):
     def mini_gravatar(self):
         """Return a URL to a miniature version of the user's gravatar."""
         return self.gravatar(size=60)
-
+    
     @property
     def is_tutor(self):
         """Check if the user is a tutor."""
