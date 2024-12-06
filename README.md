@@ -3,10 +3,10 @@ Team Pelican
 ## Team members
 The members of the team are:
 - Marc-Adrian Mot
-- *enter full name 2 here*
-- *enter full name 3 here*
+- Junjie Zhou
+- Mert Ayranci 
 - *enter full name 4 here*
-- *enter full name 5 here*
+- *Hassan Muddassir*
 
 ## Project structure
 The project is called `task_manager`.  It currently consists of a single app `tasks`.
