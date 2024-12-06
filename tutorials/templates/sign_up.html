@@ -7,13 +7,6 @@
       <form action="{% url 'sign_up' %}" method="post">
         {% csrf_token %}
         {% include 'partials/bootstrap_form.html' with form=form %}
-        <div class="mb-3">
-          <label for="id_account_type" class="form-label">Account Type</label>
-          <select name="account_type" id="id_account_type" class="form-select">
-            <option value="student" {% if form.account_type.value == "student" %}selected{% endif %}>Student</option>
-            <option value="tutor" {% if form.account_type.value == "tutor" %}selected{% endif %}>Tutor</option>
-          </select>
-        </div>
         <input type="submit" value="Sign up" class="btn btn-primary">
       </form>
     </div>

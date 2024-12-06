@@ -1,0 +1,69 @@
+<!-- tutorials/templates/tutorials/admin_pending_bookings.html -->
+{% extends 'base_content.html' %}
+
+{% block content %}
+<h2 class="my-4">Pending Bookings (Admin)</h2>
+
+{% if bookings %}
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Booking ID</th>
+                    <th>Student</th>
+                    <th>Tutor</th>
+                    <th>Language</th>
+                    <th>Term</th>
+                    <th>Booking Date</th>
+                    <th>Start Time</th>
+                    <th>Frequency</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                    <tr>
+                        <td>{{ booking.id }}</td>
+                        <td>{{ booking.student.full_name }}</td>
+                        <td>
+                            {% if booking.tutor %}
+                                {{ booking.tutor.user.full_name }}
+                            {% else %}
+                                <em>No Tutor Assigned</em>
+                            {% endif %}
+                        </td>
+                        <td>{{ booking.language.name }}</td>
+                        <td>{{ booking.term.name }}</td>
+                        <td>{{ booking.get_booking_date }}</td>
+                        <td>{{ booking.start_time|time:"H:i" }}</td>
+                        <td>{{ booking.frequency }}</td>
+                        <td>
+                            <span class="badge badge-warning">{{ booking.status }}</span>
+                        </td>
+                        <td>
+                            <!-- Approve Booking Form -->
+                            <form action="{% url 'approve_booking' booking.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm mb-1" onclick="return confirm('Are you sure you want to approve this booking?');">Approve</button>
+                            </form>
+
+                            <!-- Decline Booking Form -->
+                            <form action="{% url 'decline_booking' booking.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to decline this booking?');">Decline</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        <strong>No pending bookings.</strong>
+    </div>
+{% endif %}
+
+<a href="{% url 'dashboard' %}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+{% endblock %}

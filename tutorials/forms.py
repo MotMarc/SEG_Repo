@@ -2,7 +2,10 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+from datetime import datetime, timedelta
+from django.core.exceptions import ValidationError
+
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -109,3 +112,128 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             account_type=self.cleaned_data.get('account_type'),  # Save the account type
         )
         return user
+
+
+class BookingForm(forms.ModelForm):
+    """Form for students to create a booking without selecting a tutor."""
+
+    specialization = forms.ModelChoiceField(
+        queryset=Specialization.objects.all(),
+        required=False,
+        label="Specialized Session (Optional)"
+    )
+
+    class Meta:
+        model = Booking
+        # Exclude 'tutor' from the fields
+        fields = [
+            'language',
+            'specialization',
+            'term',
+            'day_of_week',
+            'start_time',
+            'duration',
+            'frequency',
+            'experience_level'
+        ]
+        widgets = {
+            'day_of_week': forms.Select(attrs={'class': 'form-control'}),
+            'term': forms.Select(attrs={'class': 'form-control'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'duration': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'frequency': forms.Select(attrs={'class': 'form-control'}),
+            'experience_level': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Write about your experience level in maximum 100 words.',
+                'class': 'form-control',
+            }),
+        }
+
+    def clean(self):
+        """Custom validation for specialization compatibility."""
+        cleaned_data = super().clean()
+        specialization = cleaned_data.get('specialization')
+        language = cleaned_data.get('language')
+
+        # If specialization is selected, ensure it relates to the chosen language
+        if specialization and language:
+            # Example validation: Ensure specialization is relevant to the language
+            # Adjust this logic based on your actual requirements
+            if not specialization.name.lower() in language.name.lower():
+                self.add_error(
+                    'specialization',
+                    f"The specialization '{specialization}' is not applicable to the language '{language}'."
+                )
+
+        return cleaned_data
+
+
+class TutorProfileForm(forms.ModelForm):
+    """Form for tutors to select the languages and specializations they can teach."""
+    languages = forms.ModelMultipleChoiceField(
+        queryset=Language.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True,
+    )
+    specializations = forms.ModelMultipleChoiceField(
+        queryset=Specialization.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+    )
+
+    class Meta:
+        model = Tutor
+        fields = ['languages', 'specializations']
+
+
+class AdminBookingForm(forms.ModelForm):
+    """Form for admins to create a booking."""
+
+    tutor = forms.ModelChoiceField(
+        queryset=Tutor.objects.all(),
+        required=True,  # Make tutor selection mandatory
+        label="Select Tutor"
+    )
+
+    class Meta:
+        model = Booking
+        fields = ['student', 'tutor', 'language', 'specialization', 'term', 'day_of_week', 'start_time', 'duration', 'frequency']
+        widgets = {
+            'day_of_week': forms.Select(attrs={'class': 'form-control'}),
+            'term': forms.Select(attrs={'class': 'form-control'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'duration': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'frequency': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def clean_tutor(self):
+        tutor = self.cleaned_data.get('tutor')
+        if not tutor:
+            raise forms.ValidationError("Please select a tutor for the booking.")
+        return tutor
+
+    def clean(self):
+        """Custom validation to ensure no overlapping bookings."""
+        cleaned_data = super().clean()
+        tutor = cleaned_data.get('tutor')
+        term = cleaned_data.get('term')
+        day_of_week = cleaned_data.get('day_of_week')
+        start_time = cleaned_data.get('start_time')
+        duration = cleaned_data.get('duration')
+
+        # Validate overlapping bookings
+        if tutor and term and day_of_week and start_time and duration:
+            end_time = (datetime.combine(datetime.today(), start_time) + duration).time()
+            overlapping_bookings = Booking.objects.filter(
+                tutor=tutor,
+                term=term,
+                day_of_week=day_of_week,
+                start_time__lt=end_time,
+                start_time__gte=start_time,
+                status=Booking.ACCEPTED,
+            ).exclude(pk=self.instance.pk)
+
+            if overlapping_bookings.exists():
+                self.add_error(None, "This tutor is already booked for the selected time.")
+
+        return cleaned_data
