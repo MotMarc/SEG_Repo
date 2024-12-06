@@ -26,18 +26,33 @@
                     <tr>
                         <td>{{ booking.id }}</td>
                         <td>{{ booking.student.full_name }}</td>
-                        <td>{{ booking.tutor.user.full_name }}</td>
+                        <td>
+                            {% if booking.tutor %}
+                                {{ booking.tutor.user.full_name }}
+                            {% else %}
+                                <em>No Tutor Assigned</em>
+                            {% endif %}
+                        </td>
                         <td>{{ booking.language.name }}</td>
                         <td>{{ booking.term.name }}</td>
-                        <td>{{ booking.date }}</td>
-                        <td>{{ booking.start_time }}</td>
+                        <td>{{ booking.get_booking_date }}</td>
+                        <td>{{ booking.start_time|time:"H:i" }}</td>
                         <td>{{ booking.frequency }}</td>
                         <td>
                             <span class="badge badge-warning">{{ booking.status }}</span>
                         </td>
                         <td>
-                            <a href="{% url 'approve_booking' booking.id %}" class="btn btn-success btn-sm mb-1">Approve</a>
-                            <a href="{% url 'decline_booking' booking.id %}" class="btn btn-danger btn-sm">Decline</a>
+                            <!-- Approve Booking Form -->
+                            <form action="{% url 'approve_booking' booking.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm mb-1" onclick="return confirm('Are you sure you want to approve this booking?');">Approve</button>
+                            </form>
+
+                            <!-- Decline Booking Form -->
+                            <form action="{% url 'decline_booking' booking.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to decline this booking?');">Decline</button>
+                            </form>
                         </td>
                     </tr>
                 {% endfor %}

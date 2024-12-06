@@ -19,6 +19,7 @@ from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
 from django.contrib.admin.views.decorators import staff_member_required
 import logging
+from django.urls import reverse
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -191,7 +192,7 @@ def pending_bookings(request):
 # Approve booking (Admin)
 @staff_member_required
 def approve_booking(request, booking_id):
-    """Approve a specific booking and generate lessons."""
+    """Approve a specific booking and redirect to booking creation page."""
     logger.debug(f"Attempting to approve booking with ID: {booking_id}")
     
     booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
@@ -200,18 +201,22 @@ def approve_booking(request, booking_id):
     logger.debug(f"Booking ID {booking_id} status updated to ACCEPTED.")
     
     messages.success(request, f"Booking with ID {booking_id} has been approved.")
-    return redirect('admin_pending_bookings')
+    
+    # Redirect to the admin booking creation page with booking_id as a GET parameter
+    return redirect(reverse('admin_create_booking') + f'?booking_id={booking_id}')
 
 # Reject booking (Admin)
 @staff_member_required
 def decline_booking(request, booking_id):
-    """Decline a specific booking."""
+    """Decline a specific booking by rejecting student approval."""
     booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
-    booking.status = Booking.DECLINED
+    
+    # Set student approval to rejected
+    booking.student_approval = Booking.STUDENT_REJECTED
     booking.save()
+    
     messages.success(request, f"Booking with ID {booking_id} has been declined.")
     return redirect('admin_pending_bookings')
-
 
 # Update booking status (Admin)
 @login_required
@@ -256,23 +261,45 @@ def tutor_profile(request):
 
 @staff_member_required
 def admin_create_booking(request):
-    """Allow admins to create a booking."""
-    if request.method == 'POST':
-        form = AdminBookingForm(request.POST)
-        if form.is_valid():
-            booking = form.save(commit=False)
-            booking.status = Booking.PENDING  # Booking is pending admin approval
-            booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
-            booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
-            booking.save()
-            messages.success(request, "Booking created successfully! Awaiting student and tutor approval.")
-            return redirect('admin_pending_bookings')
+    """Allow admins to create a new booking or edit an existing one."""
+    booking_id = request.GET.get('booking_id')
+    if booking_id:
+        # Editing an existing booking
+        booking = get_object_or_404(Booking, id=booking_id)
+        if request.method == 'POST':
+            form = AdminBookingForm(request.POST, instance=booking)
+            if form.is_valid():
+                booking = form.save(commit=False)
+                # Optionally, set or update additional fields here
+                booking.save()
+                messages.success(request, f"Booking ID {booking.id} has been updated successfully.")
+                return redirect('admin_pending_bookings')
+            else:
+                messages.error(request, "Please correct the errors below.")
         else:
-            messages.error(request, "Please correct the errors below.")
+            form = AdminBookingForm(instance=booking)
     else:
-        form = AdminBookingForm()
-    return render(request, 'admin_create_booking.html', {'form': form})
-
+        # Creating a new booking
+        if request.method == 'POST':
+            form = AdminBookingForm(request.POST)
+            if form.is_valid():
+                booking = form.save(commit=False)
+                booking.status = Booking.PENDING  # Booking is pending admin approval
+                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
+                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
+                booking.save()
+                messages.success(request, "Booking created successfully! Awaiting student and tutor approval.")
+                return redirect('admin_pending_bookings')
+            else:
+                messages.error(request, "Please correct the errors below.")
+        else:
+            form = AdminBookingForm()
+    
+    context = {
+        'form': form,
+        'booking_id': booking_id if booking_id else None,
+    }
+    return render(request, 'admin_create_booking.html', context)
 
 @login_required
 def view_bookings(request):

@@ -23,6 +23,7 @@ urlpatterns = [
     path('bookings/admin/pending/approve/<int:booking_id>/', views.approve_booking, name='approve_booking'),
     path('bookings/admin/pending/decline/<int:booking_id>/', views.decline_booking, name='decline_booking'),
     path('bookings/admin/create/', views.admin_create_booking, name='admin_create_booking'),
+    path('bookings/admin/create/', views.admin_create_booking, name='admin_create_booking'),
 
     # Removed duplicate URL pattern below to avoid conflicts
     # path('admin/bookings/create/', views.admin_create_booking, name='admin_create_booking'),
