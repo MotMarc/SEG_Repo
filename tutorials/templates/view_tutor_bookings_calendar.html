@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Tutor Calendar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4 text-center">Your Lessons</h2>
+  <div id="calendar"></div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var calendarEl = document.getElementById('calendar');
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      events: function(fetchInfo, successCallback, failureCallback) {
+        fetch("{% url 'view_bookings' %}", {
+          headers: {
+            'x-requested-with': 'XMLHttpRequest'
+          }
+        })
+        .then(response => response.json())
+        .then(data => successCallback(data))
+        .catch(error => failureCallback(error));
+      },
+    });
+
+    calendar.render();
+  });
+</script>
+{% endblock %}

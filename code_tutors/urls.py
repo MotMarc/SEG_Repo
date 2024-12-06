@@ -1,38 +1,36 @@
-"""
-URL configuration for code_tutors project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, reverse_lazy
 from tutorials import views
+from django.contrib.auth.views import PasswordChangeView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.home, name='home'),
-    path('dashboard/', views.dashboard, name='dashboard'),
-    path('log_in/', views.LogInView.as_view(), name='log_in'),
-    path('log_out/', views.log_out, name='log_out'),
-    path('password/', views.PasswordView.as_view(), name='password'),
-    path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
-    path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
+    path('', views.home, name='home'),  # Landing page
+    path('dashboard/', views.dashboard, name='dashboard'),  # Shared dashboard redirect
+    path('log_in/', views.LogInView.as_view(), name='log_in'),  # Log in
+    path('log_out/', views.log_out, name='log_out'),  # Log out
+    path('password/', views.PasswordView.as_view(), name='password'),  # Password reset or change
+    path('profile/', views.ProfileUpdateView.as_view(), name='profile'),  # Update profile
+    path('profile/change-password/',
+         PasswordChangeView.as_view(
+             template_name='change_password.html',
+             success_url=reverse_lazy('profile')  # Redirect to the profile page after success
+         ),
+         name='change_password'),
+    path('sign_up/', views.SignUpView.as_view(), name='sign_up'),  # Sign-up page
+
+    # Student-specific dashboard and actions
     path('dashboard/student/', views.student_dashboard, name='student_dashboard'),
+    path('dashboard/student/request-meeting/', views.request_booking, name='request_meeting'),  # Request meeting
+    path('dashboard/student/view-meetings/', views.view_bookings, name='view_meetings'),
+
+    # Tutor-specific dashboard and actions
     path('dashboard/tutor/', views.tutor_dashboard, name='tutor_dashboard'),
-    path('bookings/view/', views.view_bookings, name='view_bookings'),  # URL for viewing student bookings
-    path('bookings/request/', views.request_booking, name='request_booking'),  # URL for requesting a booking
-    path('bookings/tutor/', views.view_tutor_bookings, name='view_tutor_bookings'),  # URL for tutor bookings
+    path('dashboard/tutor/change-language/', views.change_language, name='change_language'),
+    path('dashboard/tutor/view-bookings/', views.view_tutor_bookings, name='view_bookings'),  # View tutor bookings
 ]
+
+# Serve static files during development
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

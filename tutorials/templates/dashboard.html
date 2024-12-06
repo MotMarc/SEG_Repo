@@ -1,12 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-</head>
-<body>
-    <h1>Welcome, {{ user.first_name }}!</h1>
-    <p>This is your dashboard where you can manage your activities.</p>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Active Students</h5>
+        <p class="card-text display-4">25</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Scheduled Lessons</h5>
+        <p class="card-text display-4">10</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Pending Requests</h5>
+        <p class="card-text display-4">5</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        Recent Activities
+      </div>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item">John Doe booked a lesson with Tutor A.</li>
+        <li class="list-group-item">Tutor B submitted a report for Jane Smith.</li>
+        <li class="list-group-item">New request received from Mark Lee.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,13 +1,28 @@
-{% extends "base_content.html" %}
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
 
 {% block content %}
-<div class="container">
-  <h1>Student Dashboard</h1>
-  <p>Welcome, {{ user.first_name }}! Use the buttons below to manage your bookings:</p>
-  
-  <div class="mt-4">
-    <a href="{% url 'view_bookings' %}" class="btn btn-primary btn-lg">View Your Bookings</a>
-    <a href="{% url 'request_booking' %}" class="btn btn-success btn-lg">Request a Booking</a>
+<div class="container mt-4">
+  <h2 class="mb-4 text-center">Welcome, Student!</h2>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-sm mb-4">
+        <div class="card-body text-center">
+          <h5 class="card-title">Request a New Meeting</h5>
+          <p class="card-text">Schedule a session with a tutor for your preferred subject.</p>
+          <a href="{% url 'request_meeting' %}" class="btn btn-primary btn-lg w-100">Request Meeting</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title">View Your Meetings</h5>
+          <p class="card-text">Check the details of your upcoming and past meetings.</p>
+          <a href="{% url 'view_meetings' %}" class="btn btn-secondary btn-lg w-100">View Meetings</a>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
