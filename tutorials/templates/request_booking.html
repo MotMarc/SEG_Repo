@@ -1,0 +1,23 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Request a Booking</h1>
+  <form method="post" action="{% url 'request_booking' %}">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="subject" class="form-label">Subject</label>
+      <input type="text" id="subject" name="subject" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="date" class="form-label">Date</label>
+      <input type="date" id="date" name="date" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="time" class="form-label">Time</label>
+      <input type="time" id="time" name="time" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Request</button>
+  </form>
+</div>
+{% endblock %}
