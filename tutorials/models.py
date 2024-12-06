@@ -53,7 +53,7 @@ class User(AbstractUser):
     @property
     def is_tutor(self):
         """Check if the user is a tutor."""
-        return hasattr(self, 'tutor')
+        return self.account_type == 'tutor'
 
 
 class Language(models.Model):

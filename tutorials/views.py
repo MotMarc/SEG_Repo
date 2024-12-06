@@ -19,7 +19,7 @@ from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
 from django.contrib.admin.views.decorators import staff_member_required
 import logging
-from django.urls import reverse
+
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -205,6 +205,7 @@ def approve_booking(request, booking_id):
     # Redirect to the admin booking creation page with booking_id as a GET parameter
     return redirect(reverse('admin_create_booking') + f'?booking_id={booking_id}')
 
+
 # Reject booking (Admin)
 @staff_member_required
 def decline_booking(request, booking_id):
@@ -217,6 +218,7 @@ def decline_booking(request, booking_id):
     
     messages.success(request, f"Booking with ID {booking_id} has been declined.")
     return redirect('admin_pending_bookings')
+
 
 # Update booking status (Admin)
 @login_required
@@ -241,11 +243,13 @@ def tutor_profile(request):
     """Allow tutors to select the languages and specializations they can teach."""
     user = request.user
 
-    if not user.is_tutor:
+    # Check if the user is a tutor
+    if user.account_type != 'tutor':
         messages.error(request, "You must be a tutor to access this page.")
         return redirect('dashboard')
 
-    tutor = user.tutor
+    # Ensure the Tutor object exists
+    tutor, created = Tutor.objects.get_or_create(user=user)
 
     if request.method == 'POST':
         form = TutorProfileForm(request.POST, instance=tutor)
@@ -301,24 +305,24 @@ def admin_create_booking(request):
     }
     return render(request, 'admin_create_booking.html', context)
 
+
 @login_required
 def view_bookings(request):
-    """Display all bookings for the logged-in user as a student or tutor."""
+    """Display bookings relevant to the logged-in user based on their account type."""
     user = request.user
+    context = {}
 
-    # Bookings where the user is a student
-    student_bookings = Booking.objects.filter(student=user).order_by('term__start_date', 'day_of_week', 'start_time')
-
-    # Bookings where the user is a tutor
-    if hasattr(user, 'tutor'):
-        tutor_bookings = Booking.objects.filter(tutor__user=user).order_by('term__start_date', 'day_of_week', 'start_time')
+    if user.account_type == 'student':
+        # Fetch bookings where the user is the student
+        student_bookings = Booking.objects.filter(student=user).order_by('term__start_date', 'day_of_week', 'start_time')
+        context['bookings'] = student_bookings
+        context['role'] = 'Student'
     else:
-        tutor_bookings = Booking.objects.none()
+        # Handle unexpected account types or non-student users
+        messages.error(request, "You do not have access to this page.")
+        return redirect('dashboard')
 
-    return render(request, 'view_bookings.html', {
-        'student_bookings': student_bookings,
-        'tutor_bookings': tutor_bookings,
-    })
+    return render(request, 'view_bookings.html', context)
 
 
 # New Views to Handle Accepting and Rejecting Bookings by Students and Tutors
@@ -384,3 +388,18 @@ def custom_404_view(request, exception):
 
 def custom_500_view(request):
     return render(request, '500.html', status=500)
+
+@login_required
+def tutor_bookings(request):
+    """Display bookings where the user is the assigned tutor."""
+    if not verify_tutor(request):
+        return redirect('dashboard')
+
+    tutor = request.user.tutor
+    tutor_bookings = Booking.objects.filter(tutor=tutor).order_by('term__start_date', 'day_of_week', 'start_time')
+
+    context = {
+        'tutor_bookings': tutor_bookings,
+    }
+
+    return render(request, 'tutor_bookings.html', context)

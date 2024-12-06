@@ -10,11 +10,11 @@
             <!-- Admin-Specific Links -->
             <li><a href="{% url 'admin:index' %}">Admin Dashboard</a></li>
             <li><a href="{% url 'admin_pending_bookings' %}">Manage Pending Bookings</a></li>
-        {% elif user.is_tutor %}
+        {% elif user.account_type == 'tutor' %}
             <!-- Tutor-Specific Links -->
             <li><a href="{% url 'tutor_profile' %}">Update Teaching Languages</a></li>
             <li><a href="{% url 'view_bookings' %}">View Scheduled Lessons</a></li>
-        {% else %}
+        {% elif user.account_type == 'student' %}
             <!-- Student-Specific Links -->
             <li><a href="{% url 'create_booking' %}">Request a Booking</a></li>
             <li><a href="{% url 'view_bookings' %}">View Your Bookings</a></li>
