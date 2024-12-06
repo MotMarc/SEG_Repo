@@ -1,8 +1,24 @@
+"""
+URL configuration for code_tutors project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/4.2/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from tutorials import views  # Ensure 'tutorials' is your app name
+from tutorials import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -13,33 +29,10 @@ urlpatterns = [
     path('password/', views.PasswordView.as_view(), name='password'),
     path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
     path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
-
-    # Booking URL paths
-    path('create-booking/', views.create_booking, name='create_booking'),
-    path('bookings/view/', views.view_bookings, name='view_bookings'),  # Ensure this line exists
-
-    # Admin-specific Booking Management URLs
-    path('bookings/admin/pending/', views.pending_bookings, name='admin_pending_bookings'),
-    path('bookings/admin/pending/approve/<int:booking_id>/', views.approve_booking, name='approve_booking'),
-    path('bookings/admin/pending/decline/<int:booking_id>/', views.decline_booking, name='decline_booking'),
-    path('bookings/admin/create/', views.admin_create_booking, name='admin_create_booking'),
-
-    # Removed duplicate URL pattern below to avoid conflicts
-    # path('admin/bookings/create/', views.admin_create_booking, name='admin_create_booking'),
-
-    # Tutor Profile
-    path('tutor/profile/', views.tutor_profile, name='tutor_profile'),
-
-    # User Booking Actions
-    path('bookings/accept/<int:booking_id>/', views.accept_booking, name='accept_booking'),
-    path('bookings/reject/<int:booking_id>/', views.reject_booking, name='reject_booking'),
-
-
+    path('dashboard/student/', views.student_dashboard, name='student_dashboard'),
+    path('dashboard/tutor/', views.tutor_dashboard, name='tutor_dashboard'),
+    path('bookings/view/', views.view_bookings, name='view_bookings'),  # URL for viewing student bookings
+    path('bookings/request/', views.request_booking, name='request_booking'),  # URL for requesting a booking
+    path('bookings/tutor/', views.view_tutor_bookings, name='view_tutor_bookings'),  # URL for tutor bookings
 ]
-
-# Serve static files during development
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
-# Custom error handlers (ensure these views exist in tutorials/views.py)
-handler404 = 'tutorials.views.custom_404_view'
-handler500 = 'tutorials.views.custom_500_view'
