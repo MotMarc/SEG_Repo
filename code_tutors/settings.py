@@ -142,3 +142,6 @@ REDIRECT_URL_WHEN_LOGGED_IN = 'dashboard'
 MESSAGE_TAGS = {
     messages.ERROR: 'danger',
 }
+
+#tutorials.User
+AUTH_USER_MODEL = 'tutorials.User'
