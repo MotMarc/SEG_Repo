@@ -169,16 +169,17 @@ class BookingForm(forms.ModelForm):
 
 
 class TutorProfileForm(forms.ModelForm):
-    """Form for tutors to select the languages and specializations they can teach."""
     languages = forms.ModelMultipleChoiceField(
         queryset=Language.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         required=True,
+        label="Teaching Languages"
     )
     specializations = forms.ModelMultipleChoiceField(
         queryset=Specialization.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         required=False,
+        label="Specializations"
     )
 
     class Meta:

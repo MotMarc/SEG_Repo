@@ -257,6 +257,8 @@ def tutor_profile(request):
             form.save()
             messages.success(request, "Your teaching profile has been updated.")
             return redirect('dashboard')
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         form = TutorProfileForm(instance=tutor)
 
