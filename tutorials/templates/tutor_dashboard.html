@@ -1,0 +1,12 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Tutor Dashboard</h1>
+  <p>Welcome, {{ user.first_name }}! This is your tutor dashboard.</p>
+  
+  <div class="mt-4">
+    <a href="{% url 'view_tutor_bookings' %}" class="btn btn-primary btn-lg">View Your Bookings</a>
+  </div>
+</div>
+{% endblock %}

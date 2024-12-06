@@ -29,10 +29,10 @@ urlpatterns = [
     path('password/', views.PasswordView.as_view(), name='password'),
     path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
     path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
-        path('apply_tutor/', views.apply_tutor, name='apply_tutor'),
-    path('admin/review_tutor_application/<int:application_id>/<str:action>/', 
-         views.review_tutor_application, name='review_tutor_application'),
-    #booking url...
-    path('create-booking/', views.create_booking, name='create_booking'),
+    path('dashboard/student/', views.student_dashboard, name='student_dashboard'),
+    path('dashboard/tutor/', views.tutor_dashboard, name='tutor_dashboard'),
+    path('bookings/view/', views.view_bookings, name='view_bookings'),  # URL for viewing student bookings
+    path('bookings/request/', views.request_booking, name='request_booking'),  # URL for requesting a booking
+    path('bookings/tutor/', views.view_tutor_bookings, name='view_tutor_bookings'),  # URL for tutor bookings
 ]
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)   
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

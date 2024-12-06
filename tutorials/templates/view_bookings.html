@@ -1,0 +1,35 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Your Bookings</h1>
+  <p>Below are your current bookings:</p>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Tutor</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Subject</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for booking in bookings %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ booking.tutor }}</td>
+        <td>{{ booking.date }}</td>
+        <td>{{ booking.time }}</td>
+        <td>{{ booking.subject }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5">You have no bookings at the moment.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
