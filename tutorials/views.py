@@ -1,87 +1,38 @@
+# tutorials/views.py
+
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ImproperlyConfigured
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
-from tutorials.forms import LogInForm, PasswordForm, SignUpForm, UserForm
+from django.urls import reverse
+from tutorials.forms import (
+    LogInForm, PasswordForm, UserForm, SignUpForm,
+    TutorProfileForm, BookingForm, AdminBookingForm
+)
 from tutorials.helpers import login_prohibited
+from django.http import HttpResponseForbidden, HttpResponseBadRequest
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+from django.contrib.admin.views.decorators import staff_member_required
+import logging
 
-from .models import (Invoice, Lesson, LessonRequest, TutorApplication,
-                     UserProfile)
-
-
-@staff_member_required
-def review_tutor_application(request, application_id, action):
-    """Allow admins to approve or reject tutor applications."""
-    application = get_object_or_404(TutorApplication, id=application_id)
-    if action == 'approve':
-        application.status = 'approved'
-        application.user.profile.role = 'tutor'
-        application.user.profile.save()
-    elif action == 'reject':
-        application.status = 'rejected'
-    application.save()
-    messages.success(request, f"The application has been {action}d.")
-    return redirect('admin_dashboard')
-
-@login_required
-def apply_tutor(request):
-    """Allow users to apply to become a tutor."""
-    user = request.user
-    if hasattr(user, 'tutor_application'):
-        messages.error(request, "You have already applied to become a tutor.")
-        return redirect('dashboard')
-
-    TutorApplication.objects.create(user=user)
-    messages.success(request, "Your application to become a tutor has been submitted.")
-    return redirect('dashboard')
-
-#from
-from .forms import BookingForm
-from .models import Tutor, Booking
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 @login_required
 def dashboard(request):
-    """Display the current user's dashboard with detailed information."""
-
+    """Display the current user's dashboard."""
     current_user = request.user
-    congratulation_message = "Welcome to your personalized dashboard!"
-
-    # 获取用户额外信息
-    profile = get_object_or_404(UserProfile, user=current_user)
-
-    # 获取用户相关数据
-    lesson_requests = LessonRequest.objects.filter(student=current_user)
-    lessons_as_tutor = Lesson.objects.filter(tutor=current_user)
-    invoices = Invoice.objects.filter(lesson__tutor=current_user)
-
-    # Tutor 申请状态
-    tutor_application = None
-    if hasattr(current_user, 'tutor_application'):
-        tutor_application = current_user.tutor_application
-
-    context = {
-        'user': current_user,
-        'profile': profile,
-        'lesson_requests': lesson_requests,
-        'lessons_as_tutor': lessons_as_tutor,
-        'invoices': invoices,
-        'congratulation_message': congratulation_message,
-        'tutor_application': tutor_application,
-    }
-    return render(request, 'dashboard.html', context)
+    return render(request, 'dashboard.html', {'user': current_user})
 
 
 @login_prohibited
 def home(request):
     """Display the application's start/home screen."""
-
     return render(request, 'home.html')
 
 
@@ -101,7 +52,7 @@ class LoginProhibitedMixin:
         return redirect(url)
 
     def get_redirect_when_logged_in_url(self):
-        """Returns the url to redirect to when not logged in."""
+        """Returns the url to redirect to when logged in."""
         if self.redirect_when_logged_in_url is None:
             raise ImproperlyConfigured(
                 "LoginProhibitedMixin requires either a value for "
@@ -120,13 +71,11 @@ class LogInView(LoginProhibitedMixin, View):
 
     def get(self, request):
         """Display log in template."""
-
         self.next = request.GET.get('next') or ''
         return self.render()
 
     def post(self, request):
         """Handle log in attempt."""
-
         form = LogInForm(request.POST)
         self.next = request.POST.get('next') or settings.REDIRECT_URL_WHEN_LOGGED_IN
         user = form.get_user()
@@ -138,14 +87,12 @@ class LogInView(LoginProhibitedMixin, View):
 
     def render(self):
         """Render log in template with blank log in form."""
-
         form = LogInForm()
         return render(self.request, 'log_in.html', {'form': form, 'next': self.next})
 
 
 def log_out(request):
     """Log out the current user"""
-
     logout(request)
     return redirect('home')
 
@@ -158,21 +105,18 @@ class PasswordView(LoginRequiredMixin, FormView):
 
     def get_form_kwargs(self, **kwargs):
         """Pass the current user to the password change form."""
-
         kwargs = super().get_form_kwargs(**kwargs)
         kwargs.update({'user': self.request.user})
         return kwargs
 
     def form_valid(self, form):
         """Handle valid form by saving the new password."""
-
         form.save()
         login(self.request, self.request.user)
         return super().form_valid(form)
 
     def get_success_url(self):
         """Redirect the user after successful password change."""
-
         messages.add_message(self.request, messages.SUCCESS, "Password updated!")
         return reverse('dashboard')
 
@@ -211,21 +155,205 @@ class SignUpView(LoginProhibitedMixin, FormView):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
 
-
-    #...Handle the creation of a booking with a tutor.
+# Handle the creation of a booking with a tutor.
 @login_required
 def create_booking(request):
+    """Allow students to create a booking without selecting a tutor."""
     if request.method == 'POST':
         form = BookingForm(request.POST)
         if form.is_valid():
-            booking = form.save(commit=False)
-            booking.student = request.user  
-            booking.save()
-            messages.success(request, "Your booking was successful!")
-            return redirect('dashboard')  
+            try:
+                booking = form.save(commit=False)
+                booking.student = request.user
+                # Optionally, set tutor to None explicitly
+                booking.tutor = None
+                booking.save()
+                messages.success(request, "Booking created successfully! Awaiting tutor assignment.")
+                return redirect('dashboard')
+            except ValidationError as e:
+                form.add_error(None, e)
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         form = BookingForm()
-        form.fields['tutor'].queryset = Tutor.objects.all()  
 
-    return render(request, 'tutorials/create_booking.html', {'form': form})  
+    return render(request, 'create_booking.html', {'form': form})
 
+
+# Pending booking views
+@staff_member_required
+def pending_bookings(request):
+    """Display all pending bookings for admin users."""
+    bookings = Booking.objects.filter(status=Booking.PENDING).order_by('term__start_date')
+    return render(request, 'admin_pending_bookings.html', {'bookings': bookings})
+
+
+# Approve booking (Admin)
+@staff_member_required
+def approve_booking(request, booking_id):
+    """Approve a specific booking and generate lessons."""
+    logger.debug(f"Attempting to approve booking with ID: {booking_id}")
+    
+    booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
+    booking.status = Booking.ACCEPTED
+    booking.save()
+    logger.debug(f"Booking ID {booking_id} status updated to ACCEPTED.")
+    
+    messages.success(request, f"Booking with ID {booking_id} has been approved.")
+    return redirect('admin_pending_bookings')
+
+# Reject booking (Admin)
+@staff_member_required
+def decline_booking(request, booking_id):
+    """Decline a specific booking."""
+    booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
+    booking.status = Booking.DECLINED
+    booking.save()
+    messages.success(request, f"Booking with ID {booking_id} has been declined.")
+    return redirect('admin_pending_bookings')
+
+
+# Update booking status (Admin)
+@login_required
+def update_booking_status(request, booking_id, new_status):
+    """Allow only admins to update the status of a booking."""
+    if not request.user.is_staff:
+        return HttpResponseForbidden("You are not allowed to perform this action.")
+
+    booking = get_object_or_404(Booking, id=booking_id)
+
+    if new_status not in [Booking.ACCEPTED, Booking.DECLINED]:
+        return HttpResponseBadRequest("Invalid status.")
+
+    booking.status = new_status
+    booking.save()
+    messages.success(request, f"Booking has been {new_status.lower()}.")
+    return redirect('admin_pending_bookings')
+
+
+@login_required
+def tutor_profile(request):
+    """Allow tutors to select the languages and specializations they can teach."""
+    user = request.user
+
+    if not user.is_tutor:
+        messages.error(request, "You must be a tutor to access this page.")
+        return redirect('dashboard')
+
+    tutor = user.tutor
+
+    if request.method == 'POST':
+        form = TutorProfileForm(request.POST, instance=tutor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your teaching profile has been updated.")
+            return redirect('dashboard')
+    else:
+        form = TutorProfileForm(instance=tutor)
+
+    return render(request, 'tutor_profile.html', {'form': form})
+
+
+@staff_member_required
+def admin_create_booking(request):
+    """Allow admins to create a booking."""
+    if request.method == 'POST':
+        form = AdminBookingForm(request.POST)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            booking.status = Booking.PENDING  # Booking is pending admin approval
+            booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
+            booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
+            booking.save()
+            messages.success(request, "Booking created successfully! Awaiting student and tutor approval.")
+            return redirect('admin_pending_bookings')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = AdminBookingForm()
+    return render(request, 'admin_create_booking.html', {'form': form})
+
+
+@login_required
+def view_bookings(request):
+    """Display all bookings for the logged-in user as a student or tutor."""
+    user = request.user
+
+    # Bookings where the user is a student
+    student_bookings = Booking.objects.filter(student=user).order_by('term__start_date', 'day_of_week', 'start_time')
+
+    # Bookings where the user is a tutor
+    if hasattr(user, 'tutor'):
+        tutor_bookings = Booking.objects.filter(tutor__user=user).order_by('term__start_date', 'day_of_week', 'start_time')
+    else:
+        tutor_bookings = Booking.objects.none()
+
+    return render(request, 'view_bookings.html', {
+        'student_bookings': student_bookings,
+        'tutor_bookings': tutor_bookings,
+    })
+
+
+# New Views to Handle Accepting and Rejecting Bookings by Students and Tutors
+@login_required
+def accept_booking(request, booking_id):
+    """Allow students or tutors to accept a booking."""
+    booking = get_object_or_404(Booking, id=booking_id)
+    user = request.user
+
+    # Check if the user is the student
+    if booking.student == user:
+        if booking.student_approval != Booking.STUDENT_APPROVED:
+            booking.student_approval = Booking.STUDENT_APPROVED
+            booking.save()
+            messages.success(request, "You have accepted the booking.")
+        else:
+            messages.info(request, "You have already accepted this booking.")
+    # Check if the user is the tutor
+    elif hasattr(user, 'tutor') and booking.tutor == user.tutor:
+        if booking.tutor_approval != Booking.TUTOR_APPROVED:
+            booking.tutor_approval = Booking.TUTOR_APPROVED
+            booking.save()
+            messages.success(request, "You have accepted the booking.")
+        else:
+            messages.info(request, "You have already accepted this booking.")
+    else:
+        return HttpResponseForbidden("You are not allowed to perform this action.")
+
+    return redirect('view_bookings')
+
+
+@login_required
+def reject_booking(request, booking_id):
+    """Allow students or tutors to reject a booking."""
+    booking = get_object_or_404(Booking, id=booking_id)
+    user = request.user
+
+    # Check if the user is the student
+    if booking.student == user:
+        if booking.student_approval != Booking.STUDENT_REJECTED:
+            booking.student_approval = Booking.STUDENT_REJECTED
+            booking.save()
+            messages.success(request, "You have rejected the booking.")
+        else:
+            messages.info(request, "You have already rejected this booking.")
+    # Check if the user is the tutor
+    elif hasattr(user, 'tutor') and booking.tutor == user.tutor:
+        if booking.tutor_approval != Booking.TUTOR_REJECTED:
+            booking.tutor_approval = Booking.TUTOR_REJECTED
+            booking.save()
+            messages.success(request, "You have rejected the booking.")
+        else:
+            messages.info(request, "You have already rejected this booking.")
+    else:
+        return HttpResponseForbidden("You are not allowed to perform this action.")
+
+    return redirect('view_bookings')
+
+
+# Custom error handlers
+def custom_404_view(request, exception):
+    return render(request, '404.html', status=404)
+
+def custom_500_view(request):
+    return render(request, '500.html', status=500)

@@ -1,0 +1,90 @@
+{% extends 'base_content.html' %}
+
+{% block content %}
+<h2>Your Bookings</h2>
+
+<!-- Bookings as Student -->
+<h3>Bookings as Student</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tutor</th>
+            <th>Language</th>
+            <th>Term</th>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for booking in student_bookings %}
+            <tr>
+                <td>{{ booking.id }}</td>
+                <td>{{ booking.tutor.user.full_name }}</td>
+                <td>{{ booking.language.name }}</td>
+                <td>{{ booking.term.name }}</td>
+                <td>{{ booking.day_of_week }}</td>
+                <td>{{ booking.start_time }}</td>
+                <td>{{ booking.status }}</td>
+                <td>
+                    {% if booking.student == user and booking.student_approval == 'Pending' %}
+                        <a href="{% url 'accept_booking' booking.id %}" class="btn btn-success btn-sm">Accept</a>
+                        <a href="{% url 'reject_booking' booking.id %}" class="btn btn-danger btn-sm">Reject</a>
+                    {% elif booking.student == user %}
+                        <span>{{ booking.student_approval }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="8">No bookings as student.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Bookings as Tutor -->
+<h3>Bookings as Tutor</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Student</th>
+            <th>Language</th>
+            <th>Term</th>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for booking in tutor_bookings %}
+            <tr>
+                <td>{{ booking.id }}</td>
+                <td>{{ booking.student.full_name }}</td>
+                <td>{{ booking.language.name }}</td>
+                <td>{{ booking.term.name }}</td>
+                <td>{{ booking.day_of_week }}</td>
+                <td>{{ booking.start_time }}</td>
+                <td>{{ booking.status }}</td>
+                <td>
+                    {% if booking.tutor == user.tutor and booking.tutor_approval == 'Pending' %}
+                        <a href="{% url 'accept_booking' booking.id %}" class="btn btn-success btn-sm">Accept</a>
+                        <a href="{% url 'reject_booking' booking.id %}" class="btn btn-danger btn-sm">Reject</a>
+                    {% elif booking.tutor == user.tutor %}
+                        <span>{{ booking.tutor_approval }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="8">No bookings as tutor.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
