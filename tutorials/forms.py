@@ -15,7 +15,6 @@ class LogInForm(forms.Form):
 
     def get_user(self):
         """Returns authenticated user if possible."""
-
         user = None
         if self.is_valid():
             username = self.cleaned_data.get('username')
@@ -29,13 +28,12 @@ class UserForm(forms.ModelForm):
 
     class Meta:
         """Form options."""
-
         model = User
         fields = ['first_name', 'last_name', 'username', 'email']
 
 
 class NewPasswordMixin(forms.Form):
-    """Form mixing for new_password and password_confirmation fields."""
+    """Form mixin for new_password and password_confirmation fields."""
 
     new_password = forms.CharField(
         label='Password',
@@ -44,13 +42,12 @@ class NewPasswordMixin(forms.Form):
             regex=r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$',
             message='Password must contain an uppercase character, a lowercase '
                     'character and a number'
-            )]
+        )]
     )
     password_confirmation = forms.CharField(label='Password confirmation', widget=forms.PasswordInput())
 
     def clean(self):
-        """Form mixing for new_password and password_confirmation fields."""
-
+        """Clean the data and generate messages for any errors."""
         super().clean()
         new_password = self.cleaned_data.get('new_password')
         password_confirmation = self.cleaned_data.get('password_confirmation')
@@ -65,13 +62,11 @@ class PasswordForm(NewPasswordMixin):
 
     def __init__(self, user=None, **kwargs):
         """Construct new form instance with a user instance."""
-        
         super().__init__(**kwargs)
         self.user = user
 
     def clean(self):
         """Clean the data and generate messages for any errors."""
-
         super().clean()
         password = self.cleaned_data.get('password')
         if self.user is not None:
@@ -83,7 +78,6 @@ class PasswordForm(NewPasswordMixin):
 
     def save(self):
         """Save the user's new password."""
-
         new_password = self.cleaned_data['new_password']
         if self.user is not None:
             self.user.set_password(new_password)
@@ -96,13 +90,18 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
 
     class Meta:
         """Form options."""
-
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email']
+        fields = ['first_name', 'last_name', 'username', 'email', 'account_type']
+
+    account_type = forms.ChoiceField(
+        choices=User.ACCOUNT_TYPES,
+        label="Account Type",
+        required=True,
+        widget=forms.Select()
+    )
 
     def save(self):
         """Create a new user."""
-
         super().save(commit=False)
         user = User.objects.create_user(
             self.cleaned_data.get('username'),
@@ -110,6 +109,7 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             last_name=self.cleaned_data.get('last_name'),
             email=self.cleaned_data.get('email'),
             password=self.cleaned_data.get('new_password'),
+            account_type=self.cleaned_data.get('account_type'),  # Save the account type
         )
         return user
 

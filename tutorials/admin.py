@@ -7,9 +7,10 @@ from .forms import AdminBookingForm  # Import the AdminBookingForm
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
-    search_fields = ('username', 'email')
-    list_filter = ('is_staff', 'is_active')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'account_type', 'is_staff')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    list_filter = ('account_type', 'is_staff', 'is_active')
+
 
 #admin booking
 @admin.register(Booking)
