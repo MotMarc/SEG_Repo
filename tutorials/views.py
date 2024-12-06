@@ -315,10 +315,19 @@ def view_bookings(request):
     if user.account_type == 'student':
         # Fetch bookings where the user is the student
         student_bookings = Booking.objects.filter(student=user).order_by('term__start_date', 'day_of_week', 'start_time')
-        context['bookings'] = student_bookings
+        context['student_bookings'] = student_bookings
         context['role'] = 'Student'
+    elif user.is_tutor:
+        try:
+            tutor = user.tutor  # Access the related Tutor object
+            tutor_bookings = Booking.objects.filter(tutor=tutor).order_by('term__start_date', 'day_of_week', 'start_time')
+            context['tutor_bookings'] = tutor_bookings
+            context['role'] = 'Tutor'
+        except Tutor.DoesNotExist:
+            messages.error(request, "Tutor profile does not exist. Please complete your tutor profile.")
+            return redirect('tutor_profile')
     else:
-        # Handle unexpected account types or non-student users
+        # Handle unexpected account types or non-student/tutor users
         messages.error(request, "You do not have access to this page.")
         return redirect('dashboard')
 
@@ -389,17 +398,3 @@ def custom_404_view(request, exception):
 def custom_500_view(request):
     return render(request, '500.html', status=500)
 
-@login_required
-def tutor_bookings(request):
-    """Display bookings where the user is the assigned tutor."""
-    if not verify_tutor(request):
-        return redirect('dashboard')
-
-    tutor = request.user.tutor
-    tutor_bookings = Booking.objects.filter(tutor=tutor).order_by('term__start_date', 'day_of_week', 'start_time')
-
-    context = {
-        'tutor_bookings': tutor_bookings,
-    }
-
-    return render(request, 'tutor_bookings.html', context)
