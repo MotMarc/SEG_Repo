@@ -1,7 +1,9 @@
+<!-- templates/base_content.html -->
 {% extends 'base.html' %}
-{% block body %}
-  {% include 'partials/navbar.html' %}
-  {% include 'partials/messages.html' %}
-  {% block content %}
-  {% endblock %}
+
+{% block title %}{{ block.super }} - {{ page_title|default:"" }}{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">{{ page_title }}</h1>
+  {{ block.super }}
 {% endblock %}

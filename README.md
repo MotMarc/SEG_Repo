@@ -5,8 +5,8 @@ The members of the team are:
 - Marc-Adrian Mot
 - Junjie Zhou
 - Mert Ayranci 
-- Chengang Shen
-- Hassan Muddassir
+- *enter full name 4 here*
+- *Hassan Muddassir*
 
 ## Project structure
 The project is called `task_manager`.  It currently consists of a single app `tasks`.
