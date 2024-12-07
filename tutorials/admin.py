@@ -1,67 +1,92 @@
 from django.contrib import admin
-from .models import (Invoice, Lesson, LessonRequest, TutorApplication, User,
-                     UserProfile)
-from .models import Booking, Tutor, Language
+from django.urls import reverse
+from django.utils.html import format_html
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+from .forms import AdminBookingForm  # Import the AdminBookingForm
+
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
-    search_fields = ('username', 'email')
-    list_filter = ('is_staff', 'is_active')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'account_type', 'is_staff')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    list_filter = ('account_type', 'is_staff', 'is_active')
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role')
-    search_fields = ('user__username', 'role')
-    list_filter = ('role',)
 
-@admin.register(LessonRequest)
-class LessonRequestAdmin(admin.ModelAdmin):
-    list_display = ('student', 'subject', 'status', 'created_at')
-    search_fields = ('student__username', 'subject', 'description')
-    list_filter = ('status',)
-    ordering = ('-created_at',)
+#admin booking
+@admin.register(Booking)
+class BookingAdmin(admin.ModelAdmin):
+    form = AdminBookingForm  # Use the custom admin form
+    list_display = ('student', 'get_tutor', 'language', 'term', 'start_time', 'frequency', 'status')
+    list_filter = ('status', 'term', 'frequency', 'language')
+    search_fields = ('student__username', 'tutor__user__username', 'language__name', 'term__name')
+    actions = ['approve_bookings']
+
+    def get_tutor(self, obj):
+        """Return the tutor's full name for display."""
+        return obj.tutor.user.full_name() if obj.tutor else "No Tutor Assigned"
+    get_tutor.short_description = 'Tutor'
+
+    def approve_bookings(self, request, queryset):
+        """Custom admin action to approve selected bookings."""
+        approved_count = 0
+        for booking in queryset.filter(status=Booking.PENDING):
+            booking.status = Booking.ACCEPTED
+            booking.save()
+            approved_count += 1
+        self.message_user(request, f"{approved_count} booking(s) have been approved.")
+
+    def generate_lessons(self, booking):
+        """Generates lessons based on the booking's frequency and term dates."""
+        from datetime import timedelta
+
+        start_date = booking.term.start_date
+        end_date = booking.term.end_date
+        frequency_days = 7 if booking.frequency == 'Weekly' else 14
+        current_date = start_date
+
+        # Adjust current_date to the correct weekday based on term start_date
+        while current_date.weekday() != start_date.weekday():
+            current_date += timedelta(days=1)
+
+        while current_date <= end_date:
+            Lesson.objects.create(
+                booking=booking,
+                date=current_date,
+                start_time=booking.start_time,
+                duration=booking.duration
+            )
+            current_date += timedelta(days=frequency_days)
+#...
+@admin.register(Language)
+class LanguageAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+
+class TutorAdmin(admin.ModelAdmin):
+    list_display = ('user', 'display_languages')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name')
+    filter_horizontal = ('languages',)
+
+    def display_languages(self, obj):
+        return ", ".join([language.name for language in obj.languages.all()])
+    display_languages.short_description = 'Languages'
+
+
+@admin.register(Term)
+class TermAdmin(admin.ModelAdmin):
+    list_display = ('name', 'start_date', 'end_date')
+    list_filter = ('start_date', 'end_date')
+    search_fields = ('name',)
+
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ('request', 'tutor', 'start_time', 'end_time')
-    search_fields = ('request__subject', 'tutor__username')
-    list_filter = ('start_time', 'end_time')
+    list_display = ('booking', 'date', 'start_time', 'duration')
+    list_filter = ('date',)
+    search_fields = ('booking__student__username', 'booking__tutor__user__username', 'booking__language__name')
 
-@admin.register(Invoice)
-class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ('lesson', 'amount', 'is_paid', 'created_at')
-    search_fields = ('lesson__request__subject', 'lesson__tutor__username')
-    list_filter = ('is_paid', 'created_at')
-    ordering = ('-created_at',)
-
-@admin.register(TutorApplication)
-class TutorApplicationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'status', 'created_at', 'updated_at')
-    list_filter = ('status',)
-    actions = ['approve_application', 'reject_application']
-
-    def approve_application(self, request, queryset):
-        for application in queryset:
-            application.status = 'approved'
-            application.user.profile.role = 'tutor'
-            application.user.profile.save()
-            application.save()
-        self.message_user(request, "Selected applications have been approved.")
-    
-    def reject_application(self, request, queryset):
-        queryset.update(status='rejected')
-        self.message_user(request, "Selected applications have been rejected.")
-    
-    approve_application.short_description = "Approve selected applications"
-    reject_application.short_description = "Reject selected applications"
-
-#booking
-@admin.register(Booking)
-class BookingAdmin(admin.ModelAdmin):
-    list_display = ('student', 'tutor', 'language', 'booking_time', 'status')  # Add more fields if necessary
-    search_fields = ('student__username', 'tutor__user__username', 'language__name')
-
-admin.site.register(Tutor)
-admin.site.register(Language)
-  
+@admin.register(Specialization)
+class SpecializationAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)

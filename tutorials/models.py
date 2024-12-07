@@ -2,13 +2,17 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 from libgravatar import Gravatar
-#...
-from django.contrib.auth import get_user_model
-
+from django.core.exceptions import ValidationError
+from datetime import timedelta, time
 
 
 class User(AbstractUser):
     """Model used for user authentication, and team member-related information."""
+
+    ACCOUNT_TYPES = [
+        ('student', 'Student'),
+        ('tutor', 'Tutor'),
+    ]
 
     username = models.CharField(
         max_length=30,
@@ -21,6 +25,12 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=50, blank=False)
     last_name = models.CharField(max_length=50, blank=False)
     email = models.EmailField(unique=True, blank=False)
+    account_type = models.CharField(
+        max_length=10,
+        choices=ACCOUNT_TYPES,
+        default='student',
+        blank=False
+    )
 
     class Meta:
         """Model options."""
@@ -40,88 +50,11 @@ class User(AbstractUser):
         """Return a URL to a miniature version of the user's gravatar."""
         return self.gravatar(size=60)
 
+    @property
+    def is_tutor(self):
+        """Check if the user is a tutor."""
+        return self.account_type == 'tutor'
 
-
-class UserProfile(models.Model):
-    """Model for additional user profile information and roles."""
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    role = models.CharField(
-        max_length=20,
-        choices=[
-            ('admin', 'Admin'),
-            ('tutor', 'Tutor'),
-            ('student', 'Student'),
-        ]
-    )
-
-    def __str__(self):
-        return f"{self.user.username} - {self.role}"
-
-
-class LessonRequest(models.Model):
-    """Model to handle lesson requests submitted by students."""
-
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="lesson_requests")
-    subject = models.CharField(max_length=100)
-    description = models.TextField()
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('pending', 'Pending'),
-            ('approved', 'Approved'),
-            ('rejected', 'Rejected'),
-        ],
-        default='pending'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.subject} - {self.student.username}"
-
-
-class Lesson(models.Model):
-    """Model for scheduled lessons."""
-
-    request = models.OneToOneField(LessonRequest, on_delete=models.CASCADE, related_name="lesson")
-    tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="lessons")
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-
-    def __str__(self):
-        return f"{self.request.subject} - {self.tutor.username}"
-
-
-class Invoice(models.Model):
-    """Model to handle lesson invoices."""
-
-    lesson = models.OneToOneField(Lesson, on_delete=models.CASCADE, related_name="invoice")
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    is_paid = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Invoice for {self.lesson.request.subject} - Paid: {self.is_paid}"
-
-class TutorApplication(models.Model):
-    """Model to store tutor applications."""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="tutor_application")
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('pending', 'Pending'),
-            ('approved', 'Approved'),
-            ('rejected', 'Rejected'),
-        ],
-        default='pending',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.user.username} - {self.status}"
-=======
-#booking
 
 class Language(models.Model):
     """Represents a programming language that tutors can teach."""
@@ -130,38 +63,297 @@ class Language(models.Model):
     def __str__(self):
         return self.name
 
-# Define the Tutor model
-class Tutor(models.Model):
-    """Represents a tutor, extending the user with additional information."""
-    user = models.OneToOneField('User', on_delete=models.CASCADE)  # Use string reference
-    languages = models.ManyToManyField('Language', related_name='tutors')  # Use string reference
+
+class Specialization(models.Model):
+    """Represents an advanced specialization that tutors can teach."""
+    name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
-        return f'Tutor: {self.user.full_name()}'
+        return self.name
 
-# Define booking for a language.
+
+class Tutor(models.Model):
+    """Represents a tutor, extending the user with additional information."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    languages = models.ManyToManyField('Language', related_name='tutors')
+    specializations = models.ManyToManyField('Specialization', related_name='specialized_tutors', blank=True)
+
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name}"
+
+
+class Term(models.Model):
+    """Represents an academic term."""
+    name = models.CharField(max_length=50)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def clean(self):
+        """Validate term dates."""
+        if "September" in self.name and not (9 <= self.start_date.month <= 12):
+            raise ValidationError("September-Christmas term must start between September and December.")
+        if "January" in self.name and not (1 <= self.start_date.month <= 4):
+            raise ValidationError("January-Easter term must start between January and April.")
+        if "May" in self.name and not (5 <= self.start_date.month <= 7):
+            raise ValidationError("May-July term must start between May and July.")
+
+        if self.start_date >= self.end_date:
+            raise ValidationError("Term start date must be before the end date.")
+
+    def __str__(self):
+        return self.name
+
+
+class BookingManager(models.Manager):
+    """Custom manager for filtering bookings by student approval."""
+
+    def pending_approval(self):
+        return self.filter(student_approval=Booking.STUDENT_APPROVAL_PENDING)
+
+    def approved(self):
+        return self.filter(student_approval=Booking.STUDENT_APPROVED)
+
+    def rejected(self):
+        return self.filter(student_approval=Booking.STUDENT_REJECTED)
+
+
+from datetime import timedelta, time
+from django.core.exceptions import ValidationError
+from django.db import models
+
+
 class Booking(models.Model):
-    
+    """Represents a booking for tutoring services."""
 
+    # Status Choices
     PENDING = 'Pending'
     ACCEPTED = 'Accepted'
     DECLINED = 'Declined'
-
     STATUS_CHOICES = [
         (PENDING, 'Pending'),
         (ACCEPTED, 'Accepted'),
         (DECLINED, 'Declined'),
     ]
 
-    student = models.ForeignKey('User', on_delete=models.CASCADE, related_name='student_bookings')  # Use string reference
-    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='tutor_bookings')  # Use string reference
-    language = models.ForeignKey('Language', on_delete=models.CASCADE)  # Use string reference
-    booking_time = models.DateTimeField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    # Student Approval Choices
+    STUDENT_APPROVAL_PENDING = 'Pending'
+    STUDENT_APPROVED = 'Approved'
+    STUDENT_REJECTED = 'Rejected'
+    STUDENT_APPROVAL_CHOICES = [
+        (STUDENT_APPROVAL_PENDING, 'Pending Approval'),
+        (STUDENT_APPROVED, 'Approved'),
+        (STUDENT_REJECTED, 'Rejected'),
+    ]
+
+    # Tutor Approval Choices
+    TUTOR_APPROVAL_PENDING = 'Pending'
+    TUTOR_APPROVED = 'Approved'
+    TUTOR_REJECTED = 'Rejected'
+    TUTOR_APPROVAL_CHOICES = [
+        (TUTOR_APPROVAL_PENDING, 'Pending Approval'),
+        (TUTOR_APPROVED, 'Approved'),
+        (TUTOR_REJECTED, 'Rejected'),
+    ]
+
+    tutor_approval = models.CharField(
+        max_length=10,
+        choices=TUTOR_APPROVAL_CHOICES,
+        default=TUTOR_APPROVAL_PENDING,
+        verbose_name='Tutor Approval'
+    )
+
+    DAYS_OF_WEEK = [
+        ('Monday', 'Monday'),
+        ('Tuesday', 'Tuesday'),
+        ('Wednesday', 'Wednesday'),
+        ('Thursday', 'Thursday'),
+        ('Friday', 'Friday'),
+        ('Saturday', 'Saturday'),
+        ('Sunday', 'Sunday'),
+    ]
+
+    WEEKLY = 'Weekly'
+    FORTNIGHTLY = 'Fortnightly'
+    FREQUENCY_CHOICES = [
+        (WEEKLY, 'Weekly'),
+        (FORTNIGHTLY, 'Fortnightly'),
+    ]
+
+    tutor = models.ForeignKey(Tutor, related_name='tutor_bookings', on_delete=models.CASCADE, null=True, blank=True)
+    specialization = models.ForeignKey(
+        'Specialization',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings',
+        verbose_name='Specialization'
+    )
+    student = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE,
+        related_name='bookings_as_student',
+        verbose_name='Student'
+    )
+    language = models.ForeignKey(
+        'Language',
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        verbose_name='Language'
+    )
+    term = models.ForeignKey(
+        'Term',
+        on_delete=models.CASCADE,
+        related_name='bookings',
+        verbose_name='Term'
+    )
+    frequency = models.CharField(
+        max_length=15,
+        choices=FREQUENCY_CHOICES,
+        default=WEEKLY,
+        verbose_name='Frequency'
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=PENDING,
+        verbose_name='Status'
+    )
+    student_approval = models.CharField(
+        max_length=10,
+        choices=STUDENT_APPROVAL_CHOICES,
+        default=STUDENT_APPROVAL_PENDING,
+        verbose_name='Student Approval'
+    )
+    start_time = models.TimeField(
+        verbose_name='Start Time',
+        null=False,
+        blank=False,
+        default=time(10, 0)
+    )
+    duration = models.DurationField(
+        help_text="Duration of each lesson (e.g., 1 hour)",
+        verbose_name='Duration',
+        default=timedelta(hours=1)
+    )
+    experience_level = models.TextField(
+        verbose_name="Experience Level",
+        max_length=500,
+        blank=True,
+        help_text="Describe your coding experience level in 100 words or less."
+    )
+    day_of_week = models.CharField(
+        max_length=15,
+        choices=DAYS_OF_WEEK,
+        default="Monday",
+        verbose_name="Day of the Week"
+    )
+
+    objects = BookingManager()  # Use custom manager
+
+    class Meta:
+        ordering = ['term__start_date', 'day_of_week', 'start_time']
+        verbose_name = 'Booking'
+        verbose_name_plural = 'Bookings'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tutor', 'term', 'day_of_week', 'start_time'],
+                condition=models.Q(status='Accepted'),
+                name='unique_tutor_booking_per_time'
+            )
+        ]
+
+    def clean(self):
+        """Validate that the booking's fields are correct and consistent."""
+        if not self.term_id:
+            raise ValidationError({'term': 'Please select a term.'})
+
+        if self.specialization and self.tutor:
+            if not self.tutor.specializations.filter(id=self.specialization.id).exists():
+                raise ValidationError({'specialization': f"The selected tutor does not offer specialization in {self.specialization}."})
+
+        term_start = self.term.start_date
+        term_end = self.term.end_date
+        booking_date = self.calculate_booking_date(term_start)
+
+        if booking_date < term_start or booking_date > term_end:
+            raise ValidationError(f"Booking date {booking_date} must fall within the term dates {term_start} to {term_end}.")
+
+        overlapping_bookings = Booking.objects.filter(
+            tutor=self.tutor,
+            term=self.term,
+            day_of_week=self.day_of_week,
+            start_time=self.start_time,
+            status=Booking.ACCEPTED
+        ).exclude(pk=self.pk)
+
+        if overlapping_bookings.exists():
+            raise ValidationError(f"Tutor is already booked at this time: {self.day_of_week} at {self.start_time}.")
+
+    def calculate_booking_date(self, term_start):
+        """Calculate the first occurrence of the booking's day of the week within the term."""
+        term_start_weekday = term_start.weekday()
+        booking_weekday = self.get_weekday_index(self.day_of_week)
+
+        days_difference = (booking_weekday - term_start_weekday) % 7
+        booking_date = term_start + timedelta(days=days_difference)
+        return booking_date
+
+    @staticmethod
+    def get_weekday_index(day_name):
+        """Convert weekday name to a numerical index (Monday=0, Sunday=6)."""
+        days = {day: index for index, day in enumerate([
+            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+        ])}
+        return days[day_name]
+
+    def get_recurring_dates(self):
+        """Calculate all recurring dates for the booking."""
+        if not self.term:
+            return []
+
+        recurring_dates = []
+        current_date = self.term.start_date
+        while current_date <= self.term.end_date:
+            if current_date.strftime('%A') == self.day_of_week:
+                recurring_dates.append(current_date)
+            current_date += timedelta(days=1)
+
+        return recurring_dates
+
+    @classmethod
+    def fetch_calendar_data(cls, user):
+        """
+        Fetch approved bookings for the given user and return data for the calendar.
+        """
+        if user.account_type == 'student':
+            bookings = cls.objects.filter(student=user, status='Accepted')
+        elif hasattr(user, 'tutor') and user.tutor:
+            bookings = cls.objects.filter(tutor=user.tutor, status='Accepted')
+        else:
+            bookings = cls.objects.none()
+
+        calendar_data = []
+        for booking in bookings:
+            recurring_dates = booking.get_recurring_dates()
+            for date in recurring_dates:
+                calendar_data.append({
+                    'title': f"{booking.language.name if booking.language else 'No Language'} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
+                    'date': date.isoformat(),
+                    'description': f"Subject: {booking.specialization.name if booking.specialization else 'General'}",
+                })
+
+        return calendar_data
 
     def __str__(self):
-        return (
-            f"Booking by {self.student.username} with {self.tutor.user.username} "
-            f"for {self.language.name} at {self.booking_time} (Status: {self.status})"
-        )  
+        tutor_name = self.tutor.user.full_name() if self.tutor else "No Tutor Assigned"
+        return f'Booking {self.id}: {self.student.full_name()} with {tutor_name} for {self.language.name}'
 
+class Lesson(models.Model):
+    """Represents a lesson generated from a booking."""
+    booking = models.ForeignKey('Booking', on_delete=models.CASCADE)
+    date = models.DateField()
+    start_time = models.TimeField()
+    duration = models.DurationField()
+
+    def __str__(self):
+        return f'Lesson on {self.date} at {self.start_time}'
