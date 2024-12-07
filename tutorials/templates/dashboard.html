@@ -1,127 +1,187 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-</head>
-<body>
-    <div class="dashboard-container">
-        <h1 class="dashboard-title">{{ congratulation_message }}</h1>
-    
-        <!-- User Information Section -->
-        <div class="user-info">
-            <h2>User Information</h2>
-            <div class="user-card">
-                <img src="{{ user.gravatar }}" alt="Gravatar" class="user-avatar">
-                <div class="user-details">
-                    <p><strong>Username:</strong> {{ user.username }}</p>
-                    <p><strong>Full Name:</strong> {{ user.full_name }}</p>
-                    <p><strong>Email:</strong> {{ user.email }}</p>
-                    <p><strong>Role:</strong> {{ profile.role }}</p>
-                </div>
+{% extends 'base_content.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Profile</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ user.full_name }}</h5>
+                <p class="card-text">{{ user.email }}</p>
+                <a href="{% url 'profile' %}" class="btn btn-light">Edit Profile</a>
             </div>
         </div>
-    
-        <!-- Lesson Requests Section -->
-        <div class="lesson-requests">
-            <h2>Lesson Requests</h2>
-            {% if lesson_requests %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Subject</th>
-                        <th>Description</th>
-                        <th>Status</th>
-                        <th>Created At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for request in lesson_requests %}
-                    <tr>
-                        <td>{{ request.subject }}</td>
-                        <td>{{ request.description }}</td>
-                        <td>{{ request.status|title }}</td>
-                        <td>{{ request.created_at|date:"Y-m-d H:i" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p>No lesson requests found.</p>
-            {% endif %}
-        </div>
-    
-        <!-- Lessons Section -->
-        <div class="lessons">
-            <h2>Lessons as Tutor</h2>
-            {% if lessons_as_tutor %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Subject</th>
-                        <th>Start Time</th>
-                        <th>End Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for lesson in lessons_as_tutor %}
-                    <tr>
-                        <td>{{ lesson.request.subject }}</td>
-                        <td>{{ lesson.start_time|date:"Y-m-d H:i" }}</td>
-                        <td>{{ lesson.end_time|date:"Y-m-d H:i" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p>No lessons found.</p>
-            {% endif %}
-        </div>
-    
-        <!-- Invoices Section -->
-        <div class="invoices">
-            <h2>Invoices</h2>
-            {% if invoices %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Lesson</th>
-                        <th>Amount</th>
-                        <th>Paid</th>
-                        <th>Created At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for invoice in invoices %}
-                    <tr>
-                        <td>{{ invoice.lesson.request.subject }}</td>
-                        <td>${{ invoice.amount }}</td>
-                        <td>{{ invoice.is_paid|yesno:"Yes,No" }}</td>
-                        <td>{{ invoice.created_at|date:"Y-m-d H:i" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p>No invoices found.</p>
-            {% endif %}
+    </div>
+    <div class="col-md-8">
+        <h3>Overview</h3>
+        <p>Manage your bookings, update your teaching profile, and more.</p>
+        <div id="calendar-container">
+            <div class="calendar-nav">
+                <button id="prev-month" class="btn btn-secondary btn-sm">Previous</button>
+                <span id="calendar-header" class="calendar-header"></span>
+                <button id="next-month" class="btn btn-secondary btn-sm">Next</button>
+            </div>
+            <div id="weekday-header"></div>
+            <div id="basic-calendar"></div>
         </div>
     </div>
-    <div class="tutor-application">
-        <h2>Tutor Application</h2>
-        {% if profile.role == 'tutor' %}
-            <p>You are already a tutor.</p>
-        {% elif tutor_application %}
-            <p>Your application status: {{ tutor_application.status|title }}</p>
-        {% else %}
-            <form method="post" action="{% url 'apply_tutor' %}">
-                {% csrf_token %}
-                <button type="submit">Apply to Become a Tutor</button>
-            </form>
-        {% endif %}
-    </div>
-    
-    <p>This is your dashboard where you can manage your activities.</p>
-</body>
-</html>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById("basic-calendar");
+    const calendarHeaderEl = document.getElementById("calendar-header");
+    const weekdayHeaderEl = document.getElementById("weekday-header");
+    const prevButton = document.getElementById("prev-month");
+    const nextButton = document.getElementById("next-month");
+
+    let currentYear, currentMonth;
+    let bookingData = [];
+
+    // Fetch booking data dynamically
+    async function fetchBookings() {
+        try {
+            const response = await fetch('/api/calendar-bookings/');
+            bookingData = await response.json();
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+        }
+    }
+
+    // Generate weekday headers
+    function generateWeekdaysHeader() {
+        const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        weekdayHeaderEl.innerHTML = "";
+        weekdays.forEach((day) => {
+            const dayEl = document.createElement("div");
+            dayEl.className = "weekday";
+            dayEl.textContent = day;
+            weekdayHeaderEl.appendChild(dayEl);
+        });
+    }
+
+    // Generate the calendar for the selected month and year
+    function generateCalendar(year, month) {
+        const date = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayIndex = date.getDay();
+
+        // Clear calendar
+        calendarEl.innerHTML = "";
+
+        // Update header
+        calendarHeaderEl.textContent = `${date.toLocaleString("default", { month: "long" })} ${year}`;
+
+        // Add blank spaces for days before the first of the month
+        for (let i = 0; i < firstDayIndex; i++) {
+            const blank = document.createElement("div");
+            blank.className = "day blank";
+            calendarEl.appendChild(blank);
+        }
+
+        // Add days of the month
+        for (let i = 1; i <= daysInMonth; i++) {
+            const day = document.createElement("div");
+            day.className = "day";
+            day.textContent = i;
+
+            const currentDate = new Date(year, month, i).toISOString().split("T")[0];
+
+            // Highlight approved bookings
+            const dayBookings = bookingData.filter((b) => b.date === currentDate);
+            if (dayBookings.length > 0) {
+                day.style.backgroundColor = "#ffc107";
+                day.style.color = "black";
+                day.title = `${dayBookings.length} booking(s)`;
+            }
+
+            calendarEl.appendChild(day);
+        }
+    }
+
+    // Initialize the calendar
+    async function initCalendar() {
+        await fetchBookings(); // Fetch bookings before generating the calendar
+        const today = new Date();
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth();
+        generateWeekdaysHeader();
+        generateCalendar(currentYear, currentMonth);
+    }
+
+    prevButton.addEventListener("click", () => {
+        currentMonth--;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        }
+        generateCalendar(currentYear, currentMonth);
+    });
+
+    nextButton.addEventListener("click", () => {
+        currentMonth++;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        generateCalendar(currentYear, currentMonth);
+    });
+
+    initCalendar();
+});
+</script>
+<style>
+    #weekday-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: bold;
+        padding: 10px 0;
+        background-color: #f1f1f1;
+    }
+
+    #basic-calendar {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        text-align: center;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+        margin-top: 10px;
+    }
+
+    #basic-calendar .day {
+        border: 1px solid #ddd;
+        padding: 10px;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    #basic-calendar .day.blank {
+        background-color: #f0f0f0;
+        cursor: default;
+    }
+
+    #basic-calendar .day:hover:not(.blank) {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .calendar-header {
+        font-weight: bold;
+        margin: 0 10px;
+    }
+
+    .calendar-nav {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
