@@ -143,5 +143,5 @@ MESSAGE_TAGS = {
     messages.ERROR: 'danger',
 }
 
-#user.....
+#tutorials.User
 AUTH_USER_MODEL = 'tutorials.User'
