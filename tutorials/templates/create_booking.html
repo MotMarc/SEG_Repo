@@ -1,23 +1,27 @@
-<!-- Create bookings -->
+<!-- templates/create_booking.html -->
 {% extends 'base_content.html' %}
 
+{% block title %}Create Booking{% endblock %}
+
 {% block content %}
-    <h2>Create a Booking</h2>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <form method="post" novalidate>
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Book Now</button>
-    </form>
-
-    <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
-{% endblock %}
+  <h2>Create a Booking</h2>
   
+  <form method="post" novalidate>
+    {% csrf_token %}
+    
+    <!-- Display form-wide errors -->
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+    
+    <!-- Render the form using the bootstrap_form partial -->
+    {% include 'partials/bootstrap_form.html' with form=form %}
+    
+    <button type="submit" class="btn btn-success">Book Now</button>
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancel</a>
+  </form>
+{% endblock %}

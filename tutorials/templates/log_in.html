@@ -1,16 +1,22 @@
+<!-- templates/log_in.html -->
 {% extends 'base_content.html' %}
+
+{% block title %}Log In{% endblock %}
+
 {% block content %}
-<div class="container">
-  <div class="row">
-    <div class="col-sm-12 col-md-6 offset-md-3">
-      <h1>Log in</h1>
-      <form action="{% url 'log_in' %}" method="post">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <h2>Log In</h2>
+      <form method="post" novalidate>
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
+        
+        <!-- Render the form using the bootstrap_form partial -->
         {% include 'partials/bootstrap_form.html' with form=form %}
-        <input type="submit" value="Log in" class="btn btn-primary">
+        
+        <button type="submit" class="btn btn-primary">Log In</button>
+        <a href="{% url 'home' %}" class="btn btn-link">Cancel</a>
       </form>
     </div>
   </div>
-</div>
 {% endblock %}

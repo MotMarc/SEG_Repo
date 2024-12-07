@@ -1,0 +1,40 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+<div class="container">
+  <h1>Tutor Dashboard</h1>
+  <p>Welcome, {{ user.first_name }}! This is your tutor dashboard.</p>
+
+  <div class="mt-4">
+    <a href="{% url 'view_tutor_bookings' %}" class="btn btn-primary btn-lg">View Your Bookings</a>
+  </div>
+
+  <div class="mt-4">
+    <h2>Your Bookings Calendar</h2>
+    <div id="calendar"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: '/api/calendar/',  // API endpoint to fetch tutor's bookings
+        eventClick: function(info) {
+            alert('Booking: ' + info.event.title);
+        },
+        editable: false,  // Disable drag-and-drop
+        selectable: false
+    });
+    calendar.render();
+});
+</script>
+{% endblock %}
