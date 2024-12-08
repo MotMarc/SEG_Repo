@@ -19,22 +19,14 @@ class BookingAdmin(admin.ModelAdmin):
     list_display = ('student', 'get_tutor', 'language', 'term', 'start_time', 'frequency', 'status')
     list_filter = ('status', 'term', 'frequency', 'language')
     search_fields = ('student__username', 'tutor__user__username', 'language__name', 'term__name')
-    actions = ['approve_bookings']
-
+    
     def get_tutor(self, obj):
         """Return the tutor's full name for display."""
         return obj.tutor.user.full_name() if obj.tutor else "No Tutor Assigned"
     get_tutor.short_description = 'Tutor'
 
-    def approve_bookings(self, request, queryset):
-        """Custom admin action to approve selected bookings."""
-        approved_count = 0
-        for booking in queryset.filter(status=Booking.PENDING):
-            booking.status = Booking.ACCEPTED
-            booking.save()
-            approved_count += 1
-        self.message_user(request, f"{approved_count} booking(s) have been approved.")
-
+    
+    
     def generate_lessons(self, booking):
         """Generates lessons based on the booking's frequency and term dates."""
         from datetime import timedelta
@@ -44,7 +36,6 @@ class BookingAdmin(admin.ModelAdmin):
         frequency_days = 7 if booking.frequency == 'Weekly' else 14
         current_date = start_date
 
-        # Adjust current_date to the correct weekday based on term start_date
         while current_date.weekday() != start_date.weekday():
             current_date += timedelta(days=1)
 

@@ -152,24 +152,32 @@ class BookingForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        language_id = kwargs.pop('language_id', None)
+        super().__init__(*args, **kwargs)
+        if language_id:
+            try:
+                language = Language.objects.get(id=language_id)
+                self.fields['specialization'].queryset = language.specializations.all()
+            except Language.DoesNotExist:
+                self.fields['specialization'].queryset = Specialization.objects.none()
+        else:
+            self.fields['specialization'].queryset = Specialization.objects.all()
+
     def clean(self):
         """Custom validation for specialization compatibility."""
         cleaned_data = super().clean()
         specialization = cleaned_data.get('specialization')
         language = cleaned_data.get('language')
 
-        # If specialization is selected, ensure it relates to the chosen language
         if specialization and language:
-            # Example validation: Ensure specialization is relevant to the language
-            # Adjust this logic based on your actual requirements
-            if not specialization.name.lower() in language.name.lower():
+            if not specialization.languages.filter(id=language.id).exists():
                 self.add_error(
                     'specialization',
                     f"The specialization '{specialization}' is not applicable to the language '{language}'."
                 )
 
         return cleaned_data
-
 
 class TutorProfileForm(forms.ModelForm):
     languages = forms.ModelMultipleChoiceField(
