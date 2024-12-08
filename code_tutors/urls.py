@@ -3,6 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
 from tutorials import views  # Ensure 'tutorials' is your app name
+from tutorials.views import calendar_bookings_api
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -34,7 +35,9 @@ urlpatterns = [
     # User Booking Actions
     path('bookings/accept/<int:booking_id>/', views.accept_booking, name='accept_booking'),
     path('bookings/reject/<int:booking_id>/', views.reject_booking, name='reject_booking'),
-
+    
+    path('api/calendar/', views.booking_calendar_data, name='booking_calendar_data'),
+    path('api/calendar-bookings/', views.calendar_bookings_api, name='calendar_bookings_api'),
 
 ]
 
