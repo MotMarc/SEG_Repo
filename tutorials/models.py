@@ -1,10 +1,8 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 from libgravatar import Gravatar
-#...
-from django.contrib.auth import get_user_model
-
 
 
 class User(AbstractUser):
@@ -120,7 +118,7 @@ class TutorApplication(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.status}"
-=======
+
 #booking
 
 class Language(models.Model):
