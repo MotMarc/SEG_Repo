@@ -12,7 +12,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import (
     LogInForm, PasswordForm, UserForm, SignUpForm,
-    TutorProfileForm, BookingForm, AdminBookingForm
+    TutorProfileForm, BookingForm, AdminBookingForm, TutorAvailablityForm
 )
 from tutorials.helpers import login_prohibited
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
@@ -261,15 +261,24 @@ def tutor_profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Your teaching profile has been updated.")
-            return redirect('dashboard')
+            return redirect('tutor_availability')
         else:
             messages.error(request, "Please correct the errors below.")
     else:
         form = TutorProfileForm(instance=tutor)
 
     return render(request, 'tutor_profile.html', {'form': form})
-
-
+def tutor_availability(request):
+    """Allow tutors to select their availability."""
+    form = TutorAvailablityForm(request.POST)
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your availability has been updated.")
+            return redirect('dashboard')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    return render(request, 'tutor_profile_availability.html' ,{'form': form})
 @staff_member_required
 def admin_create_booking(request):
     """Allow admins to create a new booking or edit an existing one."""

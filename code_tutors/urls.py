@@ -31,7 +31,7 @@ urlpatterns = [
 
     # Tutor Profile
     path('tutor/profile/', views.tutor_profile, name='tutor_profile'),
-
+    path('tutor/profile/availability/', views.tutor_availability, name='tutor_availability'),
     # User Booking Actions
     path('bookings/accept/<int:booking_id>/', views.accept_booking, name='accept_booking'),
     path('bookings/reject/<int:booking_id>/', views.reject_booking, name='reject_booking'),

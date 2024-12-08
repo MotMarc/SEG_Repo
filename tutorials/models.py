@@ -102,7 +102,47 @@ class Term(models.Model):
 
     def __str__(self):
         return self.name
+def validate_time_range(start_time, end_time):
+        """Validate that start_time and end_time are within the allowed range."""
+        allowed_start = time(hour=9, minute=0)
+        allowed_end = time(hour=19, minute=0)
+        if not (allowed_start <= start_time <= allowed_end):
+            raise ValidationError(f"Start time must be between {allowed_start} and {allowed_end}.")
+        if not (allowed_start <= end_time <= allowed_end):
+            raise ValidationError(f"End time must be between {allowed_start} and {allowed_end}.")
+        if start_time >= end_time:
+            raise ValidationError("End time must be after start time.")
 
+class TutorAvalibility(models.Model):
+    DAY_CHOICES = [
+        ('monday', 'Monday'),
+        ('tuesday', 'Tuesday'),
+        ('wednesday', 'Wednesday'),
+        ('thursday', 'Thursday'),
+        ('friday', 'Friday'),
+        ('saturday', 'Saturday'),
+        ('sunday', 'Sunday'),
+    ]
+    Avalible_term = [
+        ('September-Christmas term','September-Christmas term'),
+        ('January-Easter term','January-Easter term'),
+        ('May-July term','May-July term'),
+    ]
+    """Represents a tutor's avalibility."""
+    term = models.ForeignKey(Term, on_delete=models.CASCADE,related_name='avalible_terms',null=True,blank=True,choices=Avalible_term)
+    day_of_week = models.DateField(null=True,blank=True, choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    @property
+    def weekday(self):
+        return self.day_of_week.weekday()
+
+    def clean(self):
+        validate_time_range(self.start_time, self.end_time)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 class BookingManager(models.Manager):
     """Custom manager for filtering bookings by student approval."""
@@ -357,3 +397,4 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f'Lesson on {self.date} at {self.start_time}'
+

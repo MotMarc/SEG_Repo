@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization,TutorAvalibility
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 
@@ -188,6 +188,20 @@ class TutorProfileForm(forms.ModelForm):
     class Meta:
         model = Tutor
         fields = ['languages', 'specializations']
+
+class TutorAvailablityForm(forms.ModelForm):
+
+    class Meta:
+        model = TutorAvalibility
+        fields = ['term','day_of_week', 'start_time', 'end_time']
+
+        widgets = {
+            'term':forms.Select(attrs={'class': 'form-select'}),
+            'day_of_week': forms.CheckboxSelectMultiple(),
+            'start_time': forms.TimeInput(attrs={'class': 'form-control','type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'class': 'form-control','type': 'time'}),
+        }
+
 
 
 class AdminBookingForm(forms.ModelForm):
