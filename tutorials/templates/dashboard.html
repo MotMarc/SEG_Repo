@@ -1,24 +1,187 @@
-<!-- templates/dashboard.html -->
 {% extends 'base_content.html' %}
 
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-  <div class="row">
+<div class="row">
     <div class="col-md-4">
-      <div class="card text-white bg-primary mb-3">
-        <div class="card-header">Profile</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ user.full_name }}</h5>
-          <p class="card-text">{{ user.email }}</p>
-          <a href="{% url 'profile' %}" class="btn btn-light">Edit Profile</a>
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Profile</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ user.full_name }}</h5>
+                <p class="card-text">{{ user.email }}</p>
+                <a href="{% url 'profile' %}" class="btn btn-light">Edit Profile</a>
+            </div>
         </div>
-      </div>
     </div>
     <div class="col-md-8">
-      <h3>Overview</h3>
-      <p>Manage your bookings, update your teaching profile, and more.</p>
-      <!-- Additional dashboard content can go here -->
+        <h3>Overview</h3>
+        <p>Manage your bookings, update your teaching profile, and more.</p>
+        <div id="calendar-container">
+            <div class="calendar-nav">
+                <button id="prev-month" class="btn btn-secondary btn-sm">Previous</button>
+                <span id="calendar-header" class="calendar-header"></span>
+                <button id="next-month" class="btn btn-secondary btn-sm">Next</button>
+            </div>
+            <div id="weekday-header"></div>
+            <div id="basic-calendar"></div>
+        </div>
     </div>
-  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById("basic-calendar");
+    const calendarHeaderEl = document.getElementById("calendar-header");
+    const weekdayHeaderEl = document.getElementById("weekday-header");
+    const prevButton = document.getElementById("prev-month");
+    const nextButton = document.getElementById("next-month");
+
+    let currentYear, currentMonth;
+    let bookingData = [];
+
+    // Fetch booking data dynamically
+    async function fetchBookings() {
+        try {
+            const response = await fetch('/api/calendar-bookings/');
+            bookingData = await response.json();
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+        }
+    }
+
+    // Generate weekday headers
+    function generateWeekdaysHeader() {
+        const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        weekdayHeaderEl.innerHTML = "";
+        weekdays.forEach((day) => {
+            const dayEl = document.createElement("div");
+            dayEl.className = "weekday";
+            dayEl.textContent = day;
+            weekdayHeaderEl.appendChild(dayEl);
+        });
+    }
+
+    // Generate the calendar for the selected month and year
+    function generateCalendar(year, month) {
+        const date = new Date(year, month, 1);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayIndex = date.getDay();
+
+        // Clear calendar
+        calendarEl.innerHTML = "";
+
+        // Update header
+        calendarHeaderEl.textContent = `${date.toLocaleString("default", { month: "long" })} ${year}`;
+
+        // Add blank spaces for days before the first of the month
+        for (let i = 0; i < firstDayIndex; i++) {
+            const blank = document.createElement("div");
+            blank.className = "day blank";
+            calendarEl.appendChild(blank);
+        }
+
+        // Add days of the month
+        for (let i = 1; i <= daysInMonth; i++) {
+            const day = document.createElement("div");
+            day.className = "day";
+            day.textContent = i;
+
+            const currentDate = new Date(year, month, i).toISOString().split("T")[0];
+
+            // Highlight approved bookings
+            const dayBookings = bookingData.filter((b) => b.date === currentDate);
+            if (dayBookings.length > 0) {
+                day.style.backgroundColor = "#ffc107";
+                day.style.color = "black";
+                day.title = `${dayBookings.length} booking(s)`;
+            }
+
+            calendarEl.appendChild(day);
+        }
+    }
+
+    // Initialize the calendar
+    async function initCalendar() {
+        await fetchBookings(); // Fetch bookings before generating the calendar
+        const today = new Date();
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth();
+        generateWeekdaysHeader();
+        generateCalendar(currentYear, currentMonth);
+    }
+
+    prevButton.addEventListener("click", () => {
+        currentMonth--;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        }
+        generateCalendar(currentYear, currentMonth);
+    });
+
+    nextButton.addEventListener("click", () => {
+        currentMonth++;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        generateCalendar(currentYear, currentMonth);
+    });
+
+    initCalendar();
+});
+</script>
+<style>
+    #weekday-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: bold;
+        padding: 10px 0;
+        background-color: #f1f1f1;
+    }
+
+    #basic-calendar {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        text-align: center;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+        margin-top: 10px;
+    }
+
+    #basic-calendar .day {
+        border: 1px solid #ddd;
+        padding: 10px;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    #basic-calendar .day.blank {
+        background-color: #f0f0f0;
+        cursor: default;
+    }
+
+    #basic-calendar .day:hover:not(.blank) {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .calendar-header {
+        font-weight: bold;
+        margin: 0 10px;
+    }
+
+    .calendar-nav {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+</style>
 {% endblock %}

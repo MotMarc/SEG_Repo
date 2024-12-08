@@ -4,6 +4,7 @@ from django.db import models
 from libgravatar import Gravatar
 from django.core.exceptions import ValidationError
 from datetime import timedelta, time
+import logging
 
 
 class User(AbstractUser):
@@ -49,7 +50,7 @@ class User(AbstractUser):
     def mini_gravatar(self):
         """Return a URL to a miniature version of the user's gravatar."""
         return self.gravatar(size=60)
-    
+
     @property
     def is_tutor(self):
         """Check if the user is a tutor."""
@@ -67,6 +68,7 @@ class Language(models.Model):
 class Specialization(models.Model):
     """Represents an advanced specialization that tutors can teach."""
     name = models.CharField(max_length=100, unique=True)
+    languages = models.ManyToManyField(Language, related_name='specializations')
 
     def __str__(self):
         return self.name
@@ -80,7 +82,6 @@ class Tutor(models.Model):
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
-
 
 
 class Term(models.Model):
@@ -107,6 +108,7 @@ class Term(models.Model):
 
 class BookingManager(models.Manager):
     """Custom manager for filtering bookings by student approval."""
+
     def pending_approval(self):
         return self.filter(student_approval=Booking.STUDENT_APPROVAL_PENDING)
 
@@ -115,6 +117,11 @@ class BookingManager(models.Manager):
 
     def rejected(self):
         return self.filter(student_approval=Booking.STUDENT_REJECTED)
+
+
+from datetime import timedelta, time
+from django.core.exceptions import ValidationError
+from django.db import models
 
 
 class Booking(models.Model):
@@ -157,25 +164,6 @@ class Booking(models.Model):
         verbose_name='Tutor Approval'
     )
 
-    def is_fully_approved(self):
-        """Check if both student and tutor have approved the booking."""
-        return self.student_approval == self.STUDENT_APPROVED and self.tutor_approval == self.TUTOR_APPROVED
-
-    def is_rejected(self):
-        """Check if either student or tutor has rejected the booking."""
-        return self.student_approval == self.STUDENT_REJECTED or self.tutor_approval == self.TUTOR_REJECTED
-
-
-    def save(self, *args, **kwargs):
-        """Override save to update status based on student and tutor approvals."""
-        if self.student_approval == self.STUDENT_APPROVED and self.tutor_approval == self.TUTOR_APPROVED:
-            self.status = self.ACCEPTED
-        elif self.student_approval == self.STUDENT_REJECTED or self.tutor_approval == self.TUTOR_REJECTED:
-            self.status = self.DECLINED
-        else:
-            self.status = self.PENDING
-        super().save(*args, **kwargs)
-
     DAYS_OF_WEEK = [
         ('Monday', 'Monday'),
         ('Tuesday', 'Tuesday'),
@@ -189,14 +177,11 @@ class Booking(models.Model):
     WEEKLY = 'Weekly'
     FORTNIGHTLY = 'Fortnightly'
     FREQUENCY_CHOICES = [
-        (WEEKLY, 'Weekly'),
-        (FORTNIGHTLY, 'Fortnightly'),
+        ('Weekly', 'Weekly'),
+        ('Fortnightly', 'Fortnightly'),
     ]
 
-    
     tutor = models.ForeignKey(Tutor, related_name='tutor_bookings', on_delete=models.CASCADE, null=True, blank=True)
-
-
     specialization = models.ForeignKey(
         'Specialization',
         on_delete=models.SET_NULL,
@@ -205,14 +190,12 @@ class Booking(models.Model):
         related_name='bookings',
         verbose_name='Specialization'
     )
-
     student = models.ForeignKey(
         'User',
         on_delete=models.CASCADE,
         related_name='bookings_as_student',
         verbose_name='Student'
     )
-
     language = models.ForeignKey(
         'Language',
         on_delete=models.CASCADE,
@@ -228,30 +211,27 @@ class Booking(models.Model):
     frequency = models.CharField(
         max_length=15,
         choices=FREQUENCY_CHOICES,
-        default=WEEKLY,
+        default='Weekly',
         verbose_name='Frequency'
     )
-
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
         default=PENDING,
         verbose_name='Status'
     )
-
     student_approval = models.CharField(
         max_length=10,
         choices=STUDENT_APPROVAL_CHOICES,
         default=STUDENT_APPROVAL_PENDING,
         verbose_name='Student Approval'
     )
-
     start_time = models.TimeField(
         verbose_name='Start Time',
-        null=False, blank=False,
+        null=False,
+        blank=False,
         default=time(10, 0)
     )
-
     duration = models.DurationField(
         help_text="Duration of each lesson (e.g., 1 hour)",
         verbose_name='Duration',
@@ -270,8 +250,8 @@ class Booking(models.Model):
         verbose_name="Day of the Week"
     )
 
-    objects = BookingManager()  # Use custom manager
-
+    objects = BookingManager()
+    
     class Meta:
         ordering = ['term__start_date', 'day_of_week', 'start_time']
         verbose_name = 'Booking'
@@ -283,23 +263,23 @@ class Booking(models.Model):
                 name='unique_tutor_booking_per_time'
             )
         ]
-
+    
     def clean(self):
         """Validate that the booking's fields are correct and consistent."""
         if not self.term_id:
             raise ValidationError({'term': 'Please select a term.'})
-
+    
         if self.specialization and self.tutor:
             if not self.tutor.specializations.filter(id=self.specialization.id).exists():
                 raise ValidationError({'specialization': f"The selected tutor does not offer specialization in {self.specialization}."})
-
+    
         term_start = self.term.start_date
         term_end = self.term.end_date
         booking_date = self.calculate_booking_date(term_start)
-
+    
         if booking_date < term_start or booking_date > term_end:
             raise ValidationError(f"Booking date {booking_date} must fall within the term dates {term_start} to {term_end}.")
-
+    
         overlapping_bookings = Booking.objects.filter(
             tutor=self.tutor,
             term=self.term,
@@ -307,7 +287,7 @@ class Booking(models.Model):
             start_time=self.start_time,
             status=Booking.ACCEPTED
         ).exclude(pk=self.pk)
-
+    
         if overlapping_bookings.exists():
             raise ValidationError(f"Tutor is already booked at this time: {self.day_of_week} at {self.start_time}.")
 
@@ -315,10 +295,11 @@ class Booking(models.Model):
         """Calculate the first occurrence of the booking's day of the week within the term."""
         term_start_weekday = term_start.weekday()
         booking_weekday = self.get_weekday_index(self.day_of_week)
-
+    
         days_difference = (booking_weekday - term_start_weekday) % 7
         booking_date = term_start + timedelta(days=days_difference)
         return booking_date
+    
 
     @staticmethod
     def get_weekday_index(day_name):
@@ -327,32 +308,83 @@ class Booking(models.Model):
             'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
         ])}
         return days[day_name]
+    
+    
+    def get_recurring_dates(self):
+        """Calculate all recurring dates for the booking based on frequency."""
+        if not self.term:
+            return []
 
-    def approve_by_student(self):
-        """Approve booking by the student."""
-        self.student_approval = self.STUDENT_APPROVED
-        self.save()
+        recurring_dates = []
 
-    def reject_by_student(self):
-        """Reject booking by the student."""
-        self.student_approval = self.STUDENT_REJECTED
-        self.save()
+    # Map day_of_week string to Python's weekday integer (Monday=0, Sunday=6)
+        day_of_week_mapping = {
+            'Monday': 0,
+            'Tuesday': 1,
+            'Wednesday': 2,
+            'Thursday': 3,
+            'Friday': 4,
+            'Saturday': 5,
+            'Sunday': 6,
+        }
+        booking_weekday = day_of_week_mapping.get(self.day_of_week, 0)
 
-    def is_approved(self):
-        """Check if the booking is approved."""
-        return self.student_approval == self.STUDENT_APPROVED
+        current_date = self.term.start_date
+        while current_date.weekday() != booking_weekday:
+            current_date += timedelta(days=1)
 
-    def is_rejected(self):
-        """Check if the booking is rejected."""
-        return self.student_approval == self.STUDENT_REJECTED
+        if self.frequency == 'Weekly':
+            interval_days = 7
+        elif self.frequency == 'Fortnightly':
+            interval_days = 14
+        else:
+            interval_days = 7
 
-    def is_pending_approval(self):
-        """Check if the booking is pending approval."""
-        return self.student_approval == self.STUDENT_APPROVAL_PENDING
+        while current_date <= self.term.end_date:
+            recurring_dates.append(current_date)
+            current_date += timedelta(days=interval_days)
 
+        return recurring_dates
+    @classmethod
+    def fetch_calendar_data(cls, user):
+        """
+        Fetch approved bookings for the given user and return data for the calendar.
+        """
+        if user.account_type == 'student':
+            bookings = cls.objects.filter(student=user, status=Booking.ACCEPTED)
+        elif user.account_type == 'tutor':
+            bookings = cls.objects.filter(tutor=user.tutor, status=Booking.ACCEPTED)
+        else:
+            bookings = cls.objects.none()
+    
+        calendar_data = []
+    
+        # Iterate over bookings to create events for recurring days
+        for booking in bookings:
+            recurring_dates = booking.get_recurring_dates()
+            for date in recurring_dates:
+                calendar_data.append({
+                    'title': f"{booking.language.name} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
+                    'date': date.isoformat(),  # Format as YYYY-MM-DD
+                    'description': f"Subject: {booking.specialization.name if booking.specialization else 'General'}",
+                })
+    
+        return calendar_data
+    
     def __str__(self):
         tutor_name = self.tutor.user.full_name() if self.tutor else "No Tutor Assigned"
         return f'Booking {self.id}: {self.student.full_name()} with {tutor_name} for {self.language.name}'
+    
+    def save(self, *args, **kwargs):
+        """Override save method to update status based on approvals."""
+        # Update status based on approvals
+        if self.student_approval == Booking.STUDENT_APPROVED and self.tutor_approval == Booking.TUTOR_APPROVED:
+            self.status = Booking.ACCEPTED
+        elif self.student_approval == Booking.STUDENT_REJECTED or self.tutor_approval == Booking.TUTOR_REJECTED:
+            self.status = Booking.DECLINED
+        else:
+            self.status = Booking.PENDING
+        super().save(*args, **kwargs)
 
 class Lesson(models.Model):
     """Represents a lesson generated from a booking."""

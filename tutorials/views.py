@@ -18,6 +18,11 @@ from tutorials.helpers import login_prohibited
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
+from .models import Booking
+from django.contrib.auth.decorators import login_required
+from django.utils.timezone import now
+import datetime
 import logging
 
 
@@ -166,7 +171,6 @@ def create_booking(request):
             try:
                 booking = form.save(commit=False)
                 booking.student = request.user
-                # Optionally, set tutor to None explicitly
                 booking.tutor = None
                 booking.save()
                 messages.success(request, "Booking created successfully! Awaiting tutor assignment.")
@@ -176,10 +180,10 @@ def create_booking(request):
         else:
             messages.error(request, "Please correct the errors below.")
     else:
-        form = BookingForm()
+        language_id = request.GET.get('language_id')
+        form = BookingForm(language_id=language_id)
 
     return render(request, 'create_booking.html', {'form': form})
-
 
 # Pending booking views
 @staff_member_required
@@ -276,9 +280,11 @@ def admin_create_booking(request):
             form = AdminBookingForm(request.POST, instance=booking)
             if form.is_valid():
                 booking = form.save(commit=False)
-                # Optionally, set or update additional fields here
+                # Reset approvals if admin is editing
+                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING
+                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING
                 booking.save()
-                messages.success(request, f"Booking ID {booking.id} has been updated successfully.")
+                messages.success(request, f"Booking ID {booking.id} has been updated successfully and approvals reset.")
                 return redirect('admin_pending_bookings')
             else:
                 messages.error(request, "Please correct the errors below.")
@@ -290,7 +296,8 @@ def admin_create_booking(request):
             form = AdminBookingForm(request.POST)
             if form.is_valid():
                 booking = form.save(commit=False)
-                booking.status = Booking.PENDING  # Booking is pending admin approval
+                # Do not set status directly; let save() handle it
+                booking.status = Booking.PENDING  # Explicitly set to 'Pending'
                 booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
                 booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
                 booking.save()
@@ -306,7 +313,6 @@ def admin_create_booking(request):
         'booking_id': booking_id if booking_id else None,
     }
     return render(request, 'admin_create_booking.html', context)
-
 
 @login_required
 def view_bookings(request):
@@ -349,6 +355,11 @@ def accept_booking(request, booking_id):
             booking.student_approval = Booking.STUDENT_APPROVED
             booking.save()
             messages.success(request, "You have accepted the booking.")
+            
+            # Check if both approvals are now approved
+            if booking.tutor_approval == Booking.TUTOR_APPROVED:
+                generate_lessons_for_booking(booking)
+                messages.success(request, "Lessons have been generated based on the approvals.")
         else:
             messages.info(request, "You have already accepted this booking.")
     # Check if the user is the tutor
@@ -357,12 +368,51 @@ def accept_booking(request, booking_id):
             booking.tutor_approval = Booking.TUTOR_APPROVED
             booking.save()
             messages.success(request, "You have accepted the booking.")
+            
+            # Check if both approvals are now approved
+            if booking.student_approval == Booking.STUDENT_APPROVED:
+                generate_lessons_for_booking(booking)
+                messages.success(request, "Lessons have been generated based on the approvals.")
         else:
             messages.info(request, "You have already accepted this booking.")
     else:
         return HttpResponseForbidden("You are not allowed to perform this action.")
 
     return redirect('view_bookings')
+
+def generate_lessons_for_booking(booking):
+    """Generate lessons based on the booking's frequency and term dates."""
+    from datetime import timedelta
+
+    start_date = booking.term.start_date
+    end_date = booking.term.end_date
+    frequency_days = 7 if booking.frequency == 'Weekly' else 14
+    current_date = start_date
+
+    # Convert day_of_week string to integer (Monday=0, Sunday=6)
+    day_of_week_mapping = {
+        'Monday': 0,
+        'Tuesday': 1,
+        'Wednesday': 2,
+        'Thursday': 3,
+        'Friday': 4,
+        'Saturday': 5,
+        'Sunday': 6,
+    }
+    booking_weekday = day_of_week_mapping.get(booking.day_of_week, 0)
+
+    # Find the first occurrence of the booking's day_of_week within the term
+    while current_date.weekday() != booking_weekday:
+        current_date += timedelta(days=1)
+
+    while current_date <= end_date:
+        Lesson.objects.create(
+            booking=booking,
+            date=current_date,
+            start_time=booking.start_time,
+            duration=booking.duration
+        )
+        current_date += timedelta(days=frequency_days)
 
 
 @login_required
@@ -377,6 +427,10 @@ def reject_booking(request, booking_id):
             booking.student_approval = Booking.STUDENT_REJECTED
             booking.save()
             messages.success(request, "You have rejected the booking.")
+            
+            # Optionally, delete associated lessons if any
+            Lesson.objects.filter(booking=booking).delete()
+            messages.info(request, "All associated lessons have been canceled.")
         else:
             messages.info(request, "You have already rejected this booking.")
     # Check if the user is the tutor
@@ -385,12 +439,38 @@ def reject_booking(request, booking_id):
             booking.tutor_approval = Booking.TUTOR_REJECTED
             booking.save()
             messages.success(request, "You have rejected the booking.")
+            
+            # Optionally, delete associated lessons if any
+            Lesson.objects.filter(booking=booking).delete()
+            messages.info(request, "All associated lessons have been canceled.")
         else:
             messages.info(request, "You have already rejected this booking.")
     else:
         return HttpResponseForbidden("You are not allowed to perform this action.")
 
     return redirect('view_bookings')
+
+@login_required
+def booking_calendar_data(request):
+    user = request.user
+    # Fetch bookings based on user type (student or tutor)
+    if user.account_type == 'student':
+        bookings = Booking.objects.filter(student=user)
+    elif user.account_type == 'tutor':
+        bookings = Booking.objects.filter(tutor=user)
+    else:
+        bookings = Booking.objects.none()
+
+    events = []
+    for booking in bookings:
+        events.append({
+            'title': f"{booking.student} - {booking.tutor}",
+            'start': booking.date.isoformat(),
+            'end': (booking.date + booking.duration).isoformat(),  # Assuming duration is timedelta
+            'description': booking.description,
+        })
+    
+    return JsonResponse(events, safe=False)
 
 
 # Custom error handlers
@@ -400,3 +480,39 @@ def custom_404_view(request, exception):
 def custom_500_view(request):
     return render(request, '500.html', status=500)
 
+logger = logging.getLogger(__name__)
+
+@login_required
+def calendar_bookings_api(request):
+    user = request.user
+    logger.debug(f"Fetching calendar data for user: {user}")
+
+    if user.account_type == 'student':
+        bookings = Booking.objects.filter(student=user, status=Booking.ACCEPTED)
+    elif user.account_type == 'tutor':
+        bookings = Booking.objects.filter(tutor=user.tutor, status=Booking.ACCEPTED)
+    else:
+        bookings = Booking.objects.none()
+
+    events = []
+
+    # Iterate over bookings to create events for recurring days
+    for booking in bookings:
+        # Ensure `day_of_week` matches valid days
+        recurring_days = [booking.day_of_week]
+        start_date = booking.term.start_date
+        end_date = booking.term.end_date
+
+        # Loop through all dates from start_date to end_date
+        current_date = start_date
+        while current_date <= end_date:
+            # Check if the day of the week matches any recurring day
+            if current_date.strftime('%A') in recurring_days:
+                events.append({
+                    'title': f"{booking.language.name} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
+                    'date': current_date.isoformat(),  # Format as YYYY-MM-DD
+                    'description': f"Subject: {booking.specialization.name if booking.specialization else 'General'}",
+                })
+            current_date += datetime.timedelta(days=1)
+
+    return JsonResponse(events, safe=False)
