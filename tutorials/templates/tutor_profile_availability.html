@@ -12,6 +12,13 @@ Create a Schedule
     <form method="post" class="needs-validation" novalidate>
         {% csrf_token %}
         
+        <!-- Display non-field errors if any -->
+        {% if form.non_field_errors %}
+            <div class="text-danger mb-3">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
         <!-- Term Name -->
         <div class="mb-3">
             <label for="id_term_name" class="form-label">Term Name</label>
@@ -23,19 +30,19 @@ Create a Schedule
 
         <!-- Term Start Date -->
         <div class="mb-3">
-            <label for="id_term_start_time" class="form-label">Term Start Date</label>
-            {{ form.term_start_time }}
-            {% if form.term_start_time.errors %}
-                <div class="text-danger">{{ form.term_start_time.errors }}</div>
+            <label for="id_term_start_date" class="form-label">Term Start Date</label>
+            {{ form.term_start_date }}
+            {% if form.term_start_date.errors %}
+                <div class="text-danger">{{ form.term_start_date.errors }}</div>
             {% endif %}
         </div>
 
         <!-- Term End Date -->
         <div class="mb-3">
-            <label for="id_term_end_time" class="form-label">Term End Date</label>
-            {{ form.term_end_time }}
-            {% if form.term_end_time.errors %}
-                <div class="text-danger">{{ form.term_end_time.errors }}</div>
+            <label for="id_term_end_date" class="form-label">Term End Date</label>
+            {{ form.term_end_date }}
+            {% if form.term_end_date.errors %}
+                <div class="text-danger">{{ form.term_end_date.errors }}</div>
             {% endif %}
         </div>
 
@@ -97,6 +104,8 @@ Create a Schedule
     }
 </style>
 {% endblock %}
+
+
 
 
 

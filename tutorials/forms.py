@@ -190,74 +190,59 @@ class TutorProfileForm(forms.ModelForm):
         fields = ['languages', 'specializations']
 
 class TutorAvailablityForm(forms.ModelForm):
-    TERM_CHOICES = [
-        ('September-Christmas', 'September-Christmas'),
-        ('January-Easter', 'January-Easter'),
-        ('May-July', 'May-July term')
-    ]
     term_name = forms.ChoiceField(
-        choices=TERM_CHOICES,
+        choices=Term.TERM_CHOICES,  # directly reference the choices from the model
         required=True,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    term_start_time = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date', })
+    term_start_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
-    term_end_time = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date', })
+    term_end_date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
     class Meta:
         model = TutorAvalibility
+        # Do not include 'term' here since we will create it in the save method
         fields = ['day_of_week', 'start_time', 'end_time']
-
         widgets = {
-            # Dropdown for selecting the day of the week
-            'day_of_week': forms.CheckboxSelectMultiple(attrs={
-                'class': 'form-check'
-            }),
-            # Time input for start time
+            'day_of_week': forms.CheckboxSelectMultiple(attrs={'class': 'form-check'}),
             'start_time': forms.TimeInput(attrs={
                 'class': 'form-control',
-                'type': 'time',  # Use the 'time' input type for time pickers
+                'type': 'time',
                 'placeholder': '09:00'
             }),
-            # Time input for end time
             'end_time': forms.TimeInput(attrs={
                 'class': 'form-control',
-                'type': 'time',  # Use the 'time' input type for time pickers
+                'type': 'time',
                 'placeholder': '19:00'
             }),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('term_start_date')
+        end_date = cleaned_data.get('term_end_date')
+        if start_date and end_date and start_date >= end_date:
+            self.add_error('term_end_date', "End date must be later than start date.")
+        return cleaned_data
+
     def save(self, commit=True):
         instance = super().save(commit=False)
-        term = Term.objects.create(
+        # Create a new Term object using the cleaned data
+        term = Term(
             name=self.cleaned_data['term_name'],
-            start_date=self.cleaned_data['term_start_time'],
-            end_date=self.cleaned_data['term_end_time']
+            start_date=self.cleaned_data['term_start_date'],
+            end_date=self.cleaned_data['term_end_date']
         )
+        # Validate the Term before saving
+        term.full_clean()
+        term.save()
+        # Assign this new term to the instance
         instance.term = term
         if commit:
             instance.save()
-        
         return instance
-
-    def clean(self):
-        """
-        Validate the form fields, specifically ensuring the start_time
-        is earlier than the end_time.
-        """
-        cleaned_data = super().clean()
-        start_date = cleaned_data.get('term_start_time')
-        end_date = cleaned_data.get('term_end_time')
-
-        # Check if both start_time and end_time are provided
-        if start_date and end_date:
-            # Ensure the start_time is before the end_time
-            if start_date >= end_date:
-                raise forms.ValidationError("End time must be later than start time")
-
-        return cleaned_data
-
 
 
 class AdminBookingForm(forms.ModelForm):

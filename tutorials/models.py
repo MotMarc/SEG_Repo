@@ -84,25 +84,50 @@ class Tutor(models.Model):
 
 
 class Term(models.Model):
-    """Represents an academic term."""
-    name = models.CharField(max_length=50)
+    # Define a limited set of choices for the term name
+    TERM_CHOICES = [
+        ('September-Christmas', 'September-Christmas'),
+        ('January-Easter', 'January-Easter'),
+        ('May-July', 'May-July'),
+    ]
+
+    # Use a CharField with predefined choices for the term name
+    name = models.CharField(
+        max_length=50,
+        choices=TERM_CHOICES,
+        help_text="Select the term from the given options."
+    )
     start_date = models.DateField()
     end_date = models.DateField()
 
     def clean(self):
-        """Validate term dates."""
-        if "September" in self.name and not (9 <= self.start_date.month <= 12):
-            raise ValidationError("September-Christmas term must start between September and December.")
-        if "January" in self.name and not (1 <= self.start_date.month <= 4):
-            raise ValidationError("January-Easter term must start between January and April.")
-        if "May" in self.name and not (5 <= self.start_date.month <= 7):
-            raise ValidationError("May-July term must start between May and July.")
+        """
+        Validate the start_date and end_date based on the selected term name.
+        Also ensure that the start_date is before the end_date.
+        """
+        # Validate date ranges according to the chosen term name
+        if self.name == 'September-Christmas':
+            # The start month should be between September(9) and December(12)
+            if not (9 <= self.start_date.month <= 12):
+                raise ValidationError("September-Christmas term must start between September and December.")
 
+        elif self.name == 'January-Easter':
+            # The start month should be between January(1) and April(4)
+            if not (1 <= self.start_date.month <= 4):
+                raise ValidationError("January-Easter term must start between January and April.")
+
+        elif self.name == 'May-July':
+            # The start month should be between May(5) and July(7)
+            if not (5 <= self.start_date.month <= 7):
+                raise ValidationError("May-July term must start between May and July.")
+
+        # Ensure the start date is before the end date
         if self.start_date >= self.end_date:
             raise ValidationError("Term start date must be before the end date.")
 
     def __str__(self):
-        return self.name
+        # Return a string representation of the term
+        return f"{self.name} ({self.start_date} - {self.end_date})"
 
 
 class TutorAvalibility(models.Model):
@@ -117,6 +142,7 @@ class TutorAvalibility(models.Model):
     ]
 
     """Represents a tutor's avalibility."""
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='availabilities')
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='availabilities',)
     day_of_week = MultiSelectField(choices=DAY_CHOICES)
     start_time = models.TimeField()
@@ -147,11 +173,6 @@ class BookingManager(models.Manager):
 
     def rejected(self):
         return self.filter(student_approval=Booking.STUDENT_REJECTED)
-
-
-from datetime import timedelta, time
-from django.core.exceptions import ValidationError
-from django.db import models
 
 
 class Booking(models.Model):

@@ -1,8 +1,10 @@
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization, TutorAvalibility
 from .forms import AdminBookingForm  # Import the AdminBookingForm
+
+
 
 
 @admin.register(User)
@@ -90,3 +92,9 @@ class LessonAdmin(admin.ModelAdmin):
 class SpecializationAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+
+@admin.register(TutorAvalibility)
+class TutorAvalibilityAdmin(admin.ModelAdmin):
+    list_display = ('tutor', 'term', 'day_of_week', 'start_time', 'end_time')
+    list_filter = ('term', 'day_of_week')
+    search_fields = ('tutor__user__username', 'tutor__user__first_name', 'tutor__user__last_name')

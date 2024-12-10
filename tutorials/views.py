@@ -268,22 +268,38 @@ def tutor_profile(request):
         form = TutorProfileForm(instance=tutor)
 
     return render(request, 'tutor_profile.html', {'form': form})
+
 @require_http_methods(['GET', 'POST'])
+@login_required
 def tutor_availability(request):
     """Allow tutors to select their availability."""
+    user = request.user
+    # Check if the user is a tutor
+    if not hasattr(user, 'tutor'):
+        messages.error(request, "Only tutors can set availability.")
+        return redirect('dashboard')
+
     if request.method == 'POST':
         form = TutorAvailablityForm(request.POST)
         if form.is_valid():
-            form.save()
+            availability = form.save(commit=False)
+            # Assign the current user's tutor instance
+            availability.tutor = user.tutor
+            availability.save()
             messages.success(request, "Your availability has been updated.")
             return redirect('dashboard')
         else:
+            # Form is not valid, show error messages
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
             messages.error(request, "Please correct the errors below.")
     else:
         form = TutorAvailablityForm()
 
     return render(request, 'tutor_profile_availability.html', {'form': form})
-@staff_member_required
+
+
 def admin_create_booking(request):
     """Allow admins to create a new booking or edit an existing one."""
     booking_id = request.GET.get('booking_id')
@@ -299,6 +315,12 @@ def admin_create_booking(request):
                 messages.success(request, f"Booking ID {booking.id} has been updated successfully.")
                 return redirect('admin_pending_bookings')
             else:
+                # If form is invalid, loop through errors and display them as messages
+                for field in form:
+                    for error in field.errors:
+                        messages.error(request, f"{field.label}: {error}")
+                for error in form.non_field_errors():
+                    messages.error(request, error)
                 messages.error(request, "Please correct the errors below.")
         else:
             form = AdminBookingForm(instance=booking)
@@ -309,12 +331,18 @@ def admin_create_booking(request):
             if form.is_valid():
                 booking = form.save(commit=False)
                 booking.status = Booking.PENDING  # Booking is pending admin approval
-                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
-                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
+                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # pending student approval
+                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # pending tutor approval
                 booking.save()
                 messages.success(request, "Booking created successfully! Awaiting student and tutor approval.")
                 return redirect('admin_pending_bookings')
             else:
+                # If form is invalid, loop through errors and display them as messages
+                for field in form:
+                    for error in field.errors:
+                        messages.error(request, f"{field.label}: {error}")
+                for error in form.non_field_errors():
+                    messages.error(request, error)
                 messages.error(request, "Please correct the errors below.")
         else:
             form = AdminBookingForm()
