@@ -1,30 +1,32 @@
 # tutorials/views.py
 
+import datetime
+import logging
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.shortcuts import redirect, render, get_object_or_404
+from django.core.management.base import BaseCommand
+from django.http import (HttpResponseBadRequest, HttpResponseForbidden,
+                         JsonResponse)
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.timezone import now
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
-from django.urls import reverse
-from tutorials.forms import (
-    LogInForm, PasswordForm, UserForm, SignUpForm,
-    TutorProfileForm, BookingForm, AdminBookingForm
-)
-from tutorials.helpers import login_prohibited
-from django.http import HttpResponseForbidden, HttpResponseBadRequest
-from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import JsonResponse
-from .models import Booking
-from django.contrib.auth.decorators import login_required
-from django.utils.timezone import now
-import datetime
-import logging
 
+from tutorials.forms import (AdminBookingForm, BookingForm, LogInForm,
+                             PasswordForm, SignUpForm, TutorProfileForm,
+                             UserForm)
+from tutorials.helpers import login_prohibited
+
+from .models import (Booking, Invoice, Language, Lesson, Specialization, Term,
+                     Tutor, User)
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -464,3 +466,47 @@ def calendar_bookings_api(request):
             current_date += datetime.timedelta(days=1)
 
     return JsonResponse(events, safe=False)
+
+def generate_invoices():
+    """Generate invoices for all accepted bookings that do not already have an invoice."""
+    bookings = Booking.objects.filter(status=Booking.ACCEPTED).exclude(invoices__isnull=False)
+    
+    for booking in bookings:
+        tutor = booking.tutor
+        student = booking.student
+        duration_hours = Decimal(booking.duration.total_seconds()) / Decimal(3600) 
+        hourly_rate = tutor.hourly_rate 
+        total_amount = duration_hours * hourly_rate  
+
+        Invoice.objects.create(
+            booking=booking,
+            tutor=tutor,
+            student=student,
+            total_hours=duration_hours,
+            total_amount=total_amount,
+        )
+        
+@staff_member_required
+def admin_manage_invoices(request):
+    invoices = Invoice.objects.all()
+    return render(request, 'admin_manage_invoices.html', {'invoices': invoices})
+
+@staff_member_required
+def admin_generate_invoices(request):
+    if request.method == 'POST':
+        generate_invoices()
+        messages.success(request, "Invoices have been generated successfully!!!!!")
+        return redirect('admin_manage_invoices')
+
+@staff_member_required
+def admin_mark_invoice_paid(request, invoice_id):
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+    if request.method == 'POST':
+        invoice.mark_as_paid()
+        messages.success(request, f"Invoice {invoice.id} marked as paid.")
+        return redirect('admin_manage_invoices')
+    
+@staff_member_required
+def admin_booking_detail(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+    return render(request, 'admin_booking_detail.html', {'booking': booking})

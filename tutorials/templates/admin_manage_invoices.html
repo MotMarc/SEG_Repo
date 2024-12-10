@@ -1,0 +1,77 @@
+{% extends 'base_content.html' %}
+
+{% block content %}
+    <h2>Admin - Manage Invoices</h2>
+
+    <!-- Display validation and success/error messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Generate Invoices -->
+    <div class="mb-4">
+        <form method="post" action="{% url 'admin_generate_invoices' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">Generate Invoices</button>
+        </form>
+    </div>
+
+    <!-- Invoice Table -->
+    <h3>Existing Invoices</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Booking</th>
+                <th>Tutor</th>
+                <th>Student</th>
+                <th>Total Hours</th>
+                <th>Total Amount</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+                <tr>
+                    <td>{{ invoice.id }}</td>
+                    <td><a href="{% url 'admin_booking_detail' invoice.booking.id %}">Booking {{ invoice.booking.id }}</a></td>
+                    <td>{{ invoice.tutor.user.full_name }}</td>
+                    <td>{{ invoice.student.full_name }}</td>
+                    <td>{{ invoice.total_hours }}</td>
+                    <td>${{ invoice.total_amount }}</td>
+                    <td>
+                        {% if invoice.status == 'Pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% else %}
+                            <span class="badge bg-success">Paid</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ invoice.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if invoice.status == 'Pending' %}
+                            <form method="post" action="{% url 'admin_mark_invoice_paid' invoice.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">Mark as Paid</button>
+                            </form>
+                        {% else %}
+                            <button class="btn btn-secondary btn-sm" disabled>Paid</button>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center">No invoices found.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Back to Admin Dashboard -->
+    <a href="{% url 'admin_manage_invoices' %}" class="btn btn-secondary">Back to Admin Dashboard</a>
+{% endblock %}

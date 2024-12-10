@@ -1,8 +1,10 @@
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+
 from .forms import AdminBookingForm  # Import the AdminBookingForm
+from .models import (Booking, Invoice, Language, Lesson, Specialization, Term,
+                     Tutor, User)
 
 
 @admin.register(User)
@@ -90,3 +92,16 @@ class LessonAdmin(admin.ModelAdmin):
 class SpecializationAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+    
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('id', 'booking', 'tutor', 'student', 'total_hours', 'total_amount', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('booking__id', 'tutor__user__username', 'student__username')
+    actions = ['mark_as_paid']
+
+    @admin.action(description='Mark selected invoices as Paid')
+    def mark_as_paid(self, request, queryset):
+        """Custom action to mark selected invoices as Paid."""
+        updated_count = queryset.update(status='Paid')
+        self.message_user(request, f"{updated_count} invoice(s) successfully marked as Paid.")
