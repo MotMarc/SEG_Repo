@@ -24,7 +24,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.timezone import now
 import datetime
 import logging
-
+from django.views.decorators.http import require_http_methods
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -268,17 +268,21 @@ def tutor_profile(request):
         form = TutorProfileForm(instance=tutor)
 
     return render(request, 'tutor_profile.html', {'form': form})
+@require_http_methods(['GET', 'POST'])
 def tutor_availability(request):
     """Allow tutors to select their availability."""
-    form = TutorAvailablityForm(request.POST)
     if request.method == 'POST':
+        form = TutorAvailablityForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "Your availability has been updated.")
             return redirect('dashboard')
         else:
             messages.error(request, "Please correct the errors below.")
-    return render(request, 'tutor_profile_availability.html' ,{'form': form})
+    else:
+        form = TutorAvailablityForm()
+
+    return render(request, 'tutor_profile_availability.html', {'form': form})
 @staff_member_required
 def admin_create_booking(request):
     """Allow admins to create a new booking or edit an existing one."""

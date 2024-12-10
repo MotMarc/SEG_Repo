@@ -190,17 +190,67 @@ class TutorProfileForm(forms.ModelForm):
         fields = ['languages', 'specializations']
 
 class TutorAvailablityForm(forms.ModelForm):
-
+    term_name = forms.CharField(
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Term Name'})
+    )
+    term_start_time = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date', })
+    )
+    term_end_time = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date', })
+    )
     class Meta:
         model = TutorAvalibility
-        fields = ['term','day_of_week', 'start_time', 'end_time']
+        fields = ['day_of_week', 'start_time', 'end_time']
 
         widgets = {
-            'term':forms.Select(attrs={'class': 'form-select'}),
-            'day_of_week': forms.CheckboxSelectMultiple(),
-            'start_time': forms.TimeInput(attrs={'class': 'form-control','type': 'time'}),
-            'end_time': forms.TimeInput(attrs={'class': 'form-control','type': 'time'}),
+            # Dropdown for selecting the day of the week
+            'day_of_week': forms.CheckboxSelectMultiple(attrs={
+                'class': 'form-check'
+            }),
+            # Time input for start time
+            'start_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time',  # Use the 'time' input type for time pickers
+                'placeholder': '09:00'
+            }),
+            # Time input for end time
+            'end_time': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time',  # Use the 'time' input type for time pickers
+                'placeholder': '19:00'
+            }),
         }
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        term = Term.objects.create(
+            name=self.cleaned_data['term_name'],
+            start_date=self.cleaned_data['term_start_time'],
+            end_date=self.cleaned_data['term_end_time']
+        )
+        instance.term = term
+        if commit:
+            instance.save()
+        
+        return instance
+
+    def clean(self):
+        """
+        Validate the form fields, specifically ensuring the start_time
+        is earlier than the end_time.
+        """
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('term_start_time')
+        end_date = cleaned_data.get('term_end_time')
+
+        # Check if both start_time and end_time are provided
+        if start_date and end_date:
+            # Ensure the start_time is before the end_time
+            if start_date >= end_date:
+                raise forms.ValidationError("End time must be later than start time")
+
+        return cleaned_data
 
 
 

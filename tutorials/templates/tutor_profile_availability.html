@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create a Schedule
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Create a Schedule</h2>
+
+    <!-- Form for creating a tutor's schedule -->
+    <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        
+        <!-- Term Name -->
+        <div class="mb-3">
+            <label for="id_term_name" class="form-label">Term Name</label>
+            {{ form.term_name }}
+            {% if form.term_name.errors %}
+                <div class="text-danger">{{ form.term_name.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Term Start Date -->
+        <div class="mb-3">
+            <label for="id_term_start_time" class="form-label">Term Start Date</label>
+            {{ form.term_start_time }}
+            {% if form.term_start_time.errors %}
+                <div class="text-danger">{{ form.term_start_time.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Term End Date -->
+        <div class="mb-3">
+            <label for="id_term_end_time" class="form-label">Term End Date</label>
+            {{ form.term_end_time }}
+            {% if form.term_end_time.errors %}
+                <div class="text-danger">{{ form.term_end_time.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Weekday Selection -->
+        <div class="form-group mb-3">
+            <label class="form-label">Select Weekday(s)</label>
+            <div class="d-flex flex-wrap gap-3">
+                {% for value, label in form.fields.day_of_week.choices %}
+                <div class="text-center">
+                    <!-- Checkbox -->
+                    <input 
+                        type="checkbox" 
+                        id="day_{{ value }}" 
+                        name="day_of_week" 
+                        value="{{ value }}" 
+                        class="form-check-input">
+                    <!-- Label text -->
+                    <label for="day_{{ value }}" class="form-check-label d-block">{{ label }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            {% if form.day_of_week.errors %}
+                <div class="text-danger">{{ form.day_of_week.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Start Time -->
+        <div class="mb-3">
+            <label for="id_start_time" class="form-label">Start Time</label>
+            {{ form.start_time }}
+            {% if form.start_time.errors %}
+                <div class="text-danger">{{ form.start_time.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- End Time -->
+        <div class="mb-3">
+            <label for="id_end_time" class="form-label">End Time</label>
+            {{ form.end_time }}
+            {% if form.end_time.errors %}
+                <div class="text-danger">{{ form.end_time.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+
+<!-- Add styles for better alignment -->
+<style>
+    .form-check {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .form-check-label {
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+
+
+

@@ -4,6 +4,7 @@ from django.db import models
 from libgravatar import Gravatar
 from django.core.exceptions import ValidationError
 from datetime import timedelta, time
+from multiselectfield import MultiSelectField
 
 
 class User(AbstractUser):
@@ -102,16 +103,7 @@ class Term(models.Model):
 
     def __str__(self):
         return self.name
-def validate_time_range(start_time, end_time):
-        """Validate that start_time and end_time are within the allowed range."""
-        allowed_start = time(hour=9, minute=0)
-        allowed_end = time(hour=19, minute=0)
-        if not (allowed_start <= start_time <= allowed_end):
-            raise ValidationError(f"Start time must be between {allowed_start} and {allowed_end}.")
-        if not (allowed_start <= end_time <= allowed_end):
-            raise ValidationError(f"End time must be between {allowed_start} and {allowed_end}.")
-        if start_time >= end_time:
-            raise ValidationError("End time must be after start time.")
+
 
 class TutorAvalibility(models.Model):
     DAY_CHOICES = [
@@ -123,26 +115,26 @@ class TutorAvalibility(models.Model):
         ('saturday', 'Saturday'),
         ('sunday', 'Sunday'),
     ]
-    Avalible_term = [
-        ('September-Christmas term','September-Christmas term'),
-        ('January-Easter term','January-Easter term'),
-        ('May-July term','May-July term'),
-    ]
+
     """Represents a tutor's avalibility."""
-    term = models.ForeignKey(Term, on_delete=models.CASCADE,related_name='avalible_terms',null=True,blank=True,choices=Avalible_term)
-    day_of_week = models.DateField(null=True,blank=True, choices=DAY_CHOICES)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='availabilities',)
+    day_of_week = MultiSelectField(choices=DAY_CHOICES)
     start_time = models.TimeField()
     end_time = models.TimeField()
-    @property
-    def weekday(self):
-        return self.day_of_week.weekday()
-
     def clean(self):
-        validate_time_range(self.start_time, self.end_time)
+        """Custom validation for time range."""
+        allowed_start = time(hour=9, minute=0)
+        allowed_end = time(hour=19, minute=0)
 
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
+        if not (allowed_start <= self.start_time <= allowed_end):
+            raise ValidationError(f"Start time must be between {allowed_start} and {allowed_end}.")
+        if not (allowed_start <= self.end_time <= allowed_end):
+            raise ValidationError(f"End time must be between {allowed_start} and {allowed_end}.")
+        if self.start_time >= self.end_time:
+            raise ValidationError("End time must be after start time.")
+
+    def __str__(self):
+        return f"{self.day_of_week}: {self.start_time}-{self.end_time}"
 
 class BookingManager(models.Manager):
     """Custom manager for filtering bookings by student approval."""
