@@ -513,7 +513,7 @@ def admin_booking_detail(request, booking_id):
 
 @login_required
 def user_invoices(request):
-    """Displays relevant invoices on the user's dashboard"""
+    #Displays relevant invoices on the user's dashboard
 
     user = request.user
 
@@ -523,6 +523,6 @@ def user_invoices(request):
     elif user.account_type == "student":
         invoices = Invoice.objects.filter(student = user.student).order_by("-created_at")
     else:
-        invoices = Invoice.object.none()
+        invoices = Invoice.objects.none()
     
     return render(request, "dashboard.html", {"invoices": invoices})
