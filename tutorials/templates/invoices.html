@@ -1,0 +1,49 @@
+<!-- Create invoices -->
+ """Possible redundancy"""
+{% extends 'base_content.html' %}
+
+{% block content %}
+    <h2>Create an invoice</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="id_booking" class="form-label">Select Booking</label>
+            {{ form.booking }}
+            {% if form.booking.errors %}
+                <div class="invalid-feedback">
+                    {{ form.booking.errors|join:", " }}
+                </div>
+            {% endif %}
+            <small class="form-text text-info">This is automatically calculated.</small>
+        </div>
+
+        <div class="mb-3">
+            <label for="id_amount" class="form-label">Invoice Amount</label>
+            {{ form.amount }}
+            {% if form.amount.errors %}
+                <div class="invalid-feedback">
+                    {{ form.amount.errors|join:", " }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="form-check mb-3">
+            {{ form.is_paid }}
+            <label for="id_is_paid" class="form-check-label">Mark as Paid</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Create Invoice</button>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </form>
+</div>
+{% endblock %}

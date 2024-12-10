@@ -89,7 +89,7 @@ class LessonAdmin(admin.ModelAdmin):
     search_fields = ('booking__student__username', 'booking__tutor__user__username', 'booking__language__name')
 
 @admin.register(Specialization)
-class SpecializationAdmin(admin.ModelAdmin):
+class SpecializationAdmin(admin.ModelAdmin):  
     list_display = ('name',)
     search_fields = ('name',)
     

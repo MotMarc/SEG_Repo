@@ -510,3 +510,19 @@ def admin_mark_invoice_paid(request, invoice_id):
 def admin_booking_detail(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     return render(request, 'admin_booking_detail.html', {'booking': booking})
+
+@login_required
+def user_invoices(request):
+    """Displays relevant invoices on the user's dashboard"""
+
+    user = request.user
+
+    # Fetch invoices based on user type (student or tutor)
+    if user.account_type == "tutor":
+        invoices = Invoice.objects.filter(tutor = user.tutor).order_by("-created_at")
+    elif user.account_type == "student":
+        invoices = Invoice.objects.filter(student = user.student).order_by("-created_at")
+    else:
+        invoices = Invoice.object.none()
+    
+    return render(request, "dashboard.html", {"invoices": invoices})

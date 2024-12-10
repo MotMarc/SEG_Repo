@@ -375,7 +375,7 @@ class Invoice(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
+    class Meta: 
         ordering = ['-created_at']
 
     def mark_as_paid(self):
