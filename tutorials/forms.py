@@ -190,9 +190,15 @@ class TutorProfileForm(forms.ModelForm):
         fields = ['languages', 'specializations']
 
 class TutorAvailablityForm(forms.ModelForm):
-    term_name = forms.CharField(
+    TERM_CHOICES = [
+        ('September-Christmas', 'September-Christmas'),
+        ('January-Easter', 'January-Easter'),
+        ('May-July', 'May-July term')
+    ]
+    term_name = forms.ChoiceField(
+        choices=TERM_CHOICES,
         required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Term Name'})
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
     term_start_time = forms.DateField(
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date', })
