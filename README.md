@@ -27,10 +27,6 @@ Install all required packages:
 ```
 $ pip3 install -r requirements.txt
 ```
-```
-$ pip install django-multiselectfield
-```
-
 Migrate the database:
 
 ```
