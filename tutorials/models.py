@@ -78,7 +78,7 @@ class Tutor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     languages = models.ManyToManyField('Language', related_name='tutors')
     specializations = models.ManyToManyField('Specialization', related_name='specialized_tutors', blank=True)
-    hourly_rate = models.DecimalField(max_digits=6, decimal_places=2)
+    hourly_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
 

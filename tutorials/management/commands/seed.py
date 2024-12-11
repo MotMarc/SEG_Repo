@@ -1,12 +1,12 @@
-from django.core.management.base import BaseCommand, CommandError
-
-from tutorials.models import User, Term, Tutor, Language, Specialization
+from datetime import datetime
+from decimal import Decimal
+from random import randint, random
 
 import pytz
+from django.core.management.base import BaseCommand, CommandError
 from faker import Faker
-from random import randint, random
-from datetime import datetime
 
+from tutorials.models import Language, Specialization, Term, Tutor, User
 
 user_fixtures = [
     {'username': '@johndoe', 'email': 'john.doe@example.org', 'first_name': 'John', 'last_name': 'Doe'},
@@ -149,12 +149,18 @@ class Command(BaseCommand):
 
             tutor, created = Tutor.objects.get_or_create(user=user)
             if created:
+                print("Creating tutor")
                 # Assign random languages and specializations
                 languages = Language.objects.order_by('?')[:3]
                 specializations = Specialization.objects.order_by('?')[:2]
                 tutor.languages.set(languages)
                 tutor.specializations.set(specializations)
-                tutor.save()
+                hourly_rate = Decimal(1)
+                tutor.hourly_rate = hourly_rate
+                try:
+                    tutor.save()
+                except Exception as e:
+                    print(f"Error saving tutor: {e}")
                 self.stdout.write(self.style.SUCCESS(f"Added tutor: {user.username}"))
 
 
