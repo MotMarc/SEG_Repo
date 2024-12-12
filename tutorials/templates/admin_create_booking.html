@@ -4,7 +4,13 @@
     <h2>Admin - Create a Booking</h2>
 
     <!-- Display validation and success/error messages -->
-    {% if messages %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% elif messages %}
         {% for message in messages %}
             <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
                 {{ message }}

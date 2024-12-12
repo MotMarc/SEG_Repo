@@ -1,12 +1,12 @@
-from datetime import datetime
-from decimal import Decimal
-from random import randint, random
+from django.core.management.base import BaseCommand, CommandError
+
+from tutorials.models import User, Term, Tutor, Language, Specialization
 
 import pytz
-from django.core.management.base import BaseCommand, CommandError
 from faker import Faker
+from random import randint, random
+from datetime import datetime
 
-from tutorials.models import Language, Specialization, Term, Tutor, User
 
 user_fixtures = [
     {'username': '@johndoe', 'email': 'john.doe@example.org', 'first_name': 'John', 'last_name': 'Doe'},
@@ -31,7 +31,18 @@ tutor_fixtures = [
 ]
 
 
-specialization_fixtures = ['Data Science', 'Web Development', 'Machine Learning']
+SPECIALIZATION_LANGUAGE_MAP = {
+    'Data Structure': ['C', 'C++', 'Java', 'Python', 'Rust', 'Haskell', 'Scala'],
+    'Web Development': ['HTML', 'Django', 'Golang', 'Perl', 'Scala','CSS', 'Python', 'JavaScript', 'Ruby', 'PHP', 'Java', 'C#', 'Swift'],
+    'Machine Learning': ['Python', 'R', 'Java', 'C++', 'Scala', 'Haskell'],
+    'Cybersecurity': ['Python', 'C', 'C++', 'Java', 'JavaScript', 'Rust', 'Golang', 'Perl'],
+    'Cloud Computing': ['Python', 'Java', 'Golang', 'Ruby', 'C#', 'Kotlin', 'Rust', 'Scala'],
+    'Game Development': ['C++', 'C#', 'JavaScript', 'Java', 'Python', 'Swift', 'Golang'],
+    'Robotics': ['C++', 'Python', 'Java', 'C', 'Rust'],
+    'Mobile App Development': ['Java', 'Kotlin', 'Swift', 'Dart', 'C#'],
+    'UI/UX Design': ['HTML', 'CSS', 'JavaScript', 'Swift', 'Dart'],
+    'Database Administration': ['SQL', 'Python', 'PHP', 'Java', 'C#', 'Perl'],
+}
 
 class Command(BaseCommand):
     """Build automation command to seed the database."""
@@ -101,7 +112,6 @@ class Command(BaseCommand):
             start_date = datetime.strptime(term_data["start_date"], "%Y-%m-%d").date()
             end_date = datetime.strptime(term_data["end_date"], "%Y-%m-%d").date()
 
-            # Check for overlapping terms or invalid dates
             if start_date >= end_date:
                 self.stderr.write(f"Invalid term dates: {term_data['name']}. Start date must be before end date.")
                 continue
@@ -126,12 +136,23 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"Added language: {language}"))
 
     def create_specializations(self):
-        """Seed specializations into the database."""
-        for specialization in specialization_fixtures:
-            _, created = Specialization.objects.get_or_create(name=specialization)
+        """Seed specializations into the database and link them to applicable languages."""
+        for specialization in SPECIALIZATION_LANGUAGE_MAP:
+            spec, created = Specialization.objects.get_or_create(name=specialization)
             if created:
                 self.stdout.write(self.style.SUCCESS(f"Added specialization: {specialization}"))
-
+            
+            # Link specialization to languages based on the predefined map
+            applicable_languages = SPECIALIZATION_LANGUAGE_MAP.get(specialization, [])
+            for lang_name in applicable_languages:
+                try:
+                    language = Language.objects.get(name=lang_name)
+                    spec.languages.add(language)
+                    self.stdout.write(self.style.SUCCESS(f"Linked {specialization} to {lang_name}"))
+                except Language.DoesNotExist:
+                    self.stderr.write(f"Language '{lang_name}' does not exist. Cannot link to specialization '{specialization}'.")
+            
+            spec.save()
     def create_tutors(self):
         """Seed tutors into the database."""
         for tutor_data in tutor_fixtures:
@@ -141,27 +162,24 @@ class Command(BaseCommand):
                 defaults={
                     'first_name': tutor_data['first_name'],
                     'last_name': tutor_data['last_name'],
-                    'password': self.DEFAULT_PASSWORD,
                 }
             )
             if created:
+                # Set password separately to ensure it's hashed
+                user.set_password(self.DEFAULT_PASSWORD)
+                user.save()
                 self.stdout.write(self.style.SUCCESS(f"Added user for tutor: {user.username}"))
 
             tutor, created = Tutor.objects.get_or_create(user=user)
             if created:
-                print("Creating tutor")
                 # Assign random languages and specializations
                 languages = Language.objects.order_by('?')[:3]
                 specializations = Specialization.objects.order_by('?')[:2]
                 tutor.languages.set(languages)
                 tutor.specializations.set(specializations)
-                hourly_rate = Decimal(1)
-                tutor.hourly_rate = hourly_rate
-                try:
-                    tutor.save()
-                except Exception as e:
-                    print(f"Error saving tutor: {e}")
+                tutor.save()
                 self.stdout.write(self.style.SUCCESS(f"Added tutor: {user.username}"))
+
 
 
 def create_username(first_name, last_name):

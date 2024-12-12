@@ -1,10 +1,12 @@
-from datetime import time, timedelta
-
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from libgravatar import Gravatar
+from django.core.exceptions import ValidationError
+from datetime import timedelta, time, datetime
+import logging
+from multiselectfield import MultiSelectField
+
 
 
 class User(AbstractUser):
@@ -68,6 +70,7 @@ class Language(models.Model):
 class Specialization(models.Model):
     """Represents an advanced specialization that tutors can teach."""
     name = models.CharField(max_length=100, unique=True)
+    languages = models.ManyToManyField(Language, related_name='specializations')
 
     def __str__(self):
         return self.name
@@ -78,31 +81,99 @@ class Tutor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     languages = models.ManyToManyField('Language', related_name='tutors')
     specializations = models.ManyToManyField('Specialization', related_name='specialized_tutors', blank=True)
-    hourly_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
+
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
 
 
 class Term(models.Model):
-    """Represents an academic term."""
-    name = models.CharField(max_length=50)
+    # Define a limited set of choices for the term name
+    TERM_CHOICES = [
+        ('September-Christmas', 'September-Christmas'),
+        ('January-Easter', 'January-Easter'),
+        ('May-July', 'May-July'),
+    ]
+
+    # Use a CharField with predefined choices for the term name
+    name = models.CharField(
+        max_length=50,
+        choices=TERM_CHOICES,
+        help_text="Select the term from the given options."
+    )
     start_date = models.DateField()
     end_date = models.DateField()
 
     def clean(self):
-        """Validate term dates."""
-        if "September" in self.name and not (9 <= self.start_date.month <= 12):
-            raise ValidationError("September-Christmas term must start between September and December.")
-        if "January" in self.name and not (1 <= self.start_date.month <= 4):
-            raise ValidationError("January-Easter term must start between January and April.")
-        if "May" in self.name and not (5 <= self.start_date.month <= 7):
-            raise ValidationError("May-July term must start between May and July.")
+        """
+        Validate the start_date and end_date based on the selected term name.
+        Also ensure that the start_date is before the end_date.
+        """
+        # Validate date ranges according to the chosen term name
+        if self.name == 'September-Christmas':
+            # The start month should be between September(9) and December(12)
+            if not (9 <= self.start_date.month <= 12):
+                raise ValidationError("September-Christmas term must start between September and December.")
 
+        elif self.name == 'January-Easter':
+            # The start month should be between January(1) and April(4)
+            if not (1 <= self.start_date.month <= 4):
+                raise ValidationError("January-Easter term must start between January and April.")
+        elif self.name == 'May-July':
+            # The start month should be between May(5) and July(7)
+            if not (5 <= self.start_date.month <= 7):
+                raise ValidationError("May-July term must start between May and July.")
+
+        # Ensure the start date is before the end date
         if self.start_date >= self.end_date:
             raise ValidationError("Term start date must be before the end date.")
 
     def __str__(self):
-        return self.name
+        # Return a string representation of the term
+        return f"{self.name} ({self.start_date} - {self.end_date})"
+
+
+class TutorAvalibility(models.Model):
+    """Represents a tutor's availability."""
+    DAY_CHOICES = [
+        ('monday', 'Monday'),
+        ('tuesday', 'Tuesday'),
+        ('wednesday', 'Wednesday'),
+        ('thursday', 'Thursday'),
+        ('friday', 'Friday'),
+        ('saturday', 'Saturday'),
+        ('sunday', 'Sunday'),
+    ]
+
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='availabilities')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='availabilities')
+    day_of_week = MultiSelectField(choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        verbose_name = "Tutor Availability"
+        verbose_name_plural = "Tutor Availabilities"
+
+    def clean(self):
+        """Validate availability times."""
+        allowed_start = time(hour=9, minute=0)
+        allowed_end = time(hour=19, minute=0)
+
+        if self.start_time is None:
+            raise ValidationError({"start_time": "Start time must be specified."})
+        if self.end_time is None:
+            raise ValidationError({"end_time": "End time must be specified."})
+
+        if not (allowed_start <= self.start_time <= allowed_end):
+            raise ValidationError({"start_time": f"Start time must be between {allowed_start} and {allowed_end}."})
+        if not (allowed_start <= self.end_time <= allowed_end):
+            raise ValidationError({"end_time": f"End time must be between {allowed_start} and {allowed_end}."})
+
+        if self.start_time >= self.end_time:
+            raise ValidationError({"end_time": "End time must be later than start time."})
+
+    def __str__(self):
+        return f"{self.tutor} ({', '.join(self.day_of_week)}): {self.start_time}-{self.end_time}"
 
 
 class BookingManager(models.Manager):
@@ -117,11 +188,6 @@ class BookingManager(models.Manager):
     def rejected(self):
         return self.filter(student_approval=Booking.STUDENT_REJECTED)
 
-
-from datetime import time, timedelta
-
-from django.core.exceptions import ValidationError
-from django.db import models
 
 
 class Booking(models.Model):
@@ -177,8 +243,8 @@ class Booking(models.Model):
     WEEKLY = 'Weekly'
     FORTNIGHTLY = 'Fortnightly'
     FREQUENCY_CHOICES = [
-        (WEEKLY, 'Weekly'),
-        (FORTNIGHTLY, 'Fortnightly'),
+        ('Weekly', 'Weekly'),
+        ('Fortnightly', 'Fortnightly'),
     ]
 
     tutor = models.ForeignKey(Tutor, related_name='tutor_bookings', on_delete=models.CASCADE, null=True, blank=True)
@@ -211,7 +277,7 @@ class Booking(models.Model):
     frequency = models.CharField(
         max_length=15,
         choices=FREQUENCY_CHOICES,
-        default=WEEKLY,
+        default='Weekly',
         verbose_name='Frequency'
     )
     status = models.CharField(
@@ -250,7 +316,7 @@ class Booking(models.Model):
         verbose_name="Day of the Week"
     )
 
-    objects = BookingManager()  # Use custom manager
+    objects = BookingManager()
 
     class Meta:
         ordering = ['term__start_date', 'day_of_week', 'start_time']
@@ -273,12 +339,32 @@ class Booking(models.Model):
             if not self.tutor.specializations.filter(id=self.specialization.id).exists():
                 raise ValidationError({'specialization': f"The selected tutor does not offer specialization in {self.specialization}."})
 
-        term_start = self.term.start_date
-        term_end = self.term.end_date
-        booking_date = self.calculate_booking_date(term_start)
+        # Validate against tutor availability
+        if self.tutor:
+            availability = TutorAvalibility.objects.filter(
+                tutor=self.tutor,
+                term=self.term,
+                day_of_week__icontains=self.day_of_week  # Ensure day matches MultiSelectField
+            )
 
-        if booking_date < term_start or booking_date > term_end:
-            raise ValidationError(f"Booking date {booking_date} must fall within the term dates {term_start} to {term_end}.")
+            if not availability.exists():
+                raise ValidationError(
+                    f"Tutor is not available on {self.day_of_week} for the selected term."
+                )
+
+            # Check if start_time and duration fall within any available slots
+            end_time = (datetime.combine(datetime.today(), self.start_time) + self.duration).time()
+            for slot in availability:
+                if slot.start_time <= self.start_time < slot.end_time and slot.start_time < end_time <= slot.end_time:
+                    break
+            else:
+                available_slots = ", ".join(
+                    f"{slot.start_time.strftime('%H:%M')} to {slot.end_time.strftime('%H:%M')}"
+                    for slot in availability
+                )
+                raise ValidationError(
+                    f"Tutor is not available at the selected time. Available times for {self.day_of_week}: {available_slots}."
+                )
 
         overlapping_bookings = Booking.objects.filter(
             tutor=self.tutor,
@@ -290,7 +376,7 @@ class Booking(models.Model):
 
         if overlapping_bookings.exists():
             raise ValidationError(f"Tutor is already booked at this time: {self.day_of_week} at {self.start_time}.")
-
+        
     def calculate_booking_date(self, term_start):
         """Calculate the first occurrence of the booking's day of the week within the term."""
         term_start_weekday = term_start.weekday()
@@ -308,47 +394,96 @@ class Booking(models.Model):
         ])}
         return days[day_name]
 
+    def __str__(self):
+        tutor_name = self.tutor.user.full_name() if self.tutor else "No Tutor Assigned"
+        return f'Booking {self.id}: {self.student.full_name()} with {tutor_name} for {self.language.name}'
+
+    def save(self, *args, **kwargs):
+        """Override save method to update status based on approvals."""
+        if self.student_approval == Booking.STUDENT_APPROVED and self.tutor_approval == Booking.TUTOR_APPROVED:
+            self.status = Booking.ACCEPTED
+        elif self.student_approval == Booking.STUDENT_REJECTED or self.tutor_approval == Booking.TUTOR_REJECTED:
+            self.status = Booking.DECLINED
+        else:
+            self.status = Booking.PENDING
+        super().save(*args, **kwargs)
+    
+    
     def get_recurring_dates(self):
-        """Calculate all recurring dates for the booking."""
+        """Calculate all recurring dates for the booking based on frequency."""
         if not self.term:
             return []
 
         recurring_dates = []
+
+    # Map day_of_week string to Python's weekday integer (Monday=0, Sunday=6)
+        day_of_week_mapping = {
+            'Monday': 0,
+            'Tuesday': 1,
+            'Wednesday': 2,
+            'Thursday': 3,
+            'Friday': 4,
+            'Saturday': 5,
+            'Sunday': 6,
+        }
+        booking_weekday = day_of_week_mapping.get(self.day_of_week, 0)
+
         current_date = self.term.start_date
-        while current_date <= self.term.end_date:
-            if current_date.strftime('%A') == self.day_of_week:
-                recurring_dates.append(current_date)
+        while current_date.weekday() != booking_weekday:
             current_date += timedelta(days=1)
 
-        return recurring_dates
+        if self.frequency == 'Weekly':
+            interval_days = 7
+        elif self.frequency == 'Fortnightly':
+            interval_days = 14
+        else:
+            interval_days = 7
 
+        while current_date <= self.term.end_date:
+            recurring_dates.append(current_date)
+            current_date += timedelta(days=interval_days)
+
+        return recurring_dates
     @classmethod
     def fetch_calendar_data(cls, user):
         """
         Fetch approved bookings for the given user and return data for the calendar.
         """
         if user.account_type == 'student':
-            bookings = cls.objects.filter(student=user, status='Accepted')
-        elif hasattr(user, 'tutor') and user.tutor:
-            bookings = cls.objects.filter(tutor=user.tutor, status='Accepted')
+            bookings = cls.objects.filter(student=user, status=Booking.ACCEPTED)
+        elif user.account_type == 'tutor':
+            bookings = cls.objects.filter(tutor=user.tutor, status=Booking.ACCEPTED)
         else:
             bookings = cls.objects.none()
-
+    
         calendar_data = []
+    
+        # Iterate over bookings to create events for recurring days
         for booking in bookings:
             recurring_dates = booking.get_recurring_dates()
             for date in recurring_dates:
                 calendar_data.append({
-                    'title': f"{booking.language.name if booking.language else 'No Language'} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
-                    'date': date.isoformat(),
+                    'title': f"{booking.language.name} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
+                    'date': date.isoformat(),  # Format as YYYY-MM-DD
                     'description': f"Subject: {booking.specialization.name if booking.specialization else 'General'}",
                 })
-
+    
         return calendar_data
-
+    
     def __str__(self):
         tutor_name = self.tutor.user.full_name() if self.tutor else "No Tutor Assigned"
         return f'Booking {self.id}: {self.student.full_name()} with {tutor_name} for {self.language.name}'
+    
+    def save(self, *args, **kwargs):
+        """Override save method to update status based on approvals."""
+        # Update status based on approvals
+        if self.student_approval == Booking.STUDENT_APPROVED and self.tutor_approval == Booking.TUTOR_APPROVED:
+            self.status = Booking.ACCEPTED
+        elif self.student_approval == Booking.STUDENT_REJECTED or self.tutor_approval == Booking.TUTOR_REJECTED:
+            self.status = Booking.DECLINED
+        else:
+            self.status = Booking.PENDING
+        super().save(*args, **kwargs)
 
 class Lesson(models.Model):
     """Represents a lesson generated from a booking."""
@@ -359,29 +494,3 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f'Lesson on {self.date} at {self.start_time}'
-
-class Invoice(models.Model):
-    """Represents an invoice for tutoring services."""
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Paid', 'Paid'),
-    ]
-
-    booking = models.ForeignKey('Booking', on_delete=models.CASCADE, related_name='invoices')
-    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='invoices')
-    student = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invoices_as_student')
-    total_hours = models.FloatField()
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def mark_as_paid(self):
-        """Mark the invoice as paid."""
-        self.status = 'Paid'
-        self.save()
-
-    def __str__(self):
-        return f"Invoice {self.id} for Booking {self.booking.id} - Status: {self.status}"

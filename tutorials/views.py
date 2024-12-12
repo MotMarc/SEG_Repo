@@ -1,32 +1,34 @@
 # tutorials/views.py
 
-import datetime
-import logging
-from decimal import Decimal
-
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.core.management.base import BaseCommand
-from django.http import (HttpResponseBadRequest, HttpResponseForbidden,
-                         JsonResponse)
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from django.utils.timezone import now
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
-
-from tutorials.forms import (AdminBookingForm, BookingForm, LogInForm,
-                             PasswordForm, SignUpForm, TutorProfileForm,
-                             UserForm)
+from django.urls import reverse
+from tutorials.forms import (
+    LogInForm, PasswordForm, UserForm, SignUpForm,
+    TutorProfileForm, BookingForm, AdminBookingForm
+)
 from tutorials.helpers import login_prohibited
+from django.http import HttpResponseForbidden, HttpResponseBadRequest
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
+from .models import Booking
+from django.contrib.auth.decorators import login_required
+from django.utils.timezone import now
+import datetime
+import logging
+from .forms import TutorAvailablityForm
 
-from .models import (Booking, Invoice, Language, Lesson, Specialization, Term,
-                     Tutor, User)
+
+from django.views.decorators.http import require_http_methods
+
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -173,7 +175,6 @@ def create_booking(request):
             try:
                 booking = form.save(commit=False)
                 booking.student = request.user
-                # Optionally, set tutor to None explicitly
                 booking.tutor = None
                 booking.save()
                 messages.success(request, "Booking created successfully! Awaiting tutor assignment.")
@@ -183,10 +184,10 @@ def create_booking(request):
         else:
             messages.error(request, "Please correct the errors below.")
     else:
-        form = BookingForm()
+        language_id = request.GET.get('language_id')
+        form = BookingForm(language_id=language_id)
 
     return render(request, 'create_booking.html', {'form': form})
-
 
 # Pending booking views
 @staff_member_required
@@ -263,7 +264,7 @@ def tutor_profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Your teaching profile has been updated.")
-            return redirect('dashboard')
+            return redirect('tutor_availability')
         else:
             messages.error(request, "Please correct the errors below.")
     else:
@@ -283,9 +284,11 @@ def admin_create_booking(request):
             form = AdminBookingForm(request.POST, instance=booking)
             if form.is_valid():
                 booking = form.save(commit=False)
-                # Optionally, set or update additional fields here
+                # Reset approvals if admin is editing
+                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING
+                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING
                 booking.save()
-                messages.success(request, f"Booking ID {booking.id} has been updated successfully.")
+                messages.success(request, f"Booking ID {booking.id} has been updated successfully and approvals reset.")
                 return redirect('admin_pending_bookings')
             else:
                 messages.error(request, "Please correct the errors below.")
@@ -297,7 +300,8 @@ def admin_create_booking(request):
             form = AdminBookingForm(request.POST)
             if form.is_valid():
                 booking = form.save(commit=False)
-                booking.status = Booking.PENDING  # Booking is pending admin approval
+                # Do not set status directly; let save() handle it
+                booking.status = Booking.PENDING  # Explicitly set to 'Pending'
                 booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
                 booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
                 booking.save()
@@ -313,7 +317,6 @@ def admin_create_booking(request):
         'booking_id': booking_id if booking_id else None,
     }
     return render(request, 'admin_create_booking.html', context)
-
 
 @login_required
 def view_bookings(request):
@@ -356,6 +359,11 @@ def accept_booking(request, booking_id):
             booking.student_approval = Booking.STUDENT_APPROVED
             booking.save()
             messages.success(request, "You have accepted the booking.")
+            
+            # Check if both approvals are now approved
+            if booking.tutor_approval == Booking.TUTOR_APPROVED:
+                generate_lessons_for_booking(booking)
+                messages.success(request, "Lessons have been generated based on the approvals.")
         else:
             messages.info(request, "You have already accepted this booking.")
     # Check if the user is the tutor
@@ -364,12 +372,51 @@ def accept_booking(request, booking_id):
             booking.tutor_approval = Booking.TUTOR_APPROVED
             booking.save()
             messages.success(request, "You have accepted the booking.")
+            
+            # Check if both approvals are now approved
+            if booking.student_approval == Booking.STUDENT_APPROVED:
+                generate_lessons_for_booking(booking)
+                messages.success(request, "Lessons have been generated based on the approvals.")
         else:
             messages.info(request, "You have already accepted this booking.")
     else:
         return HttpResponseForbidden("You are not allowed to perform this action.")
 
     return redirect('view_bookings')
+
+def generate_lessons_for_booking(booking):
+    """Generate lessons based on the booking's frequency and term dates."""
+    from datetime import timedelta
+
+    start_date = booking.term.start_date
+    end_date = booking.term.end_date
+    frequency_days = 7 if booking.frequency == 'Weekly' else 14
+    current_date = start_date
+
+    # Convert day_of_week string to integer (Monday=0, Sunday=6)
+    day_of_week_mapping = {
+        'Monday': 0,
+        'Tuesday': 1,
+        'Wednesday': 2,
+        'Thursday': 3,
+        'Friday': 4,
+        'Saturday': 5,
+        'Sunday': 6,
+    }
+    booking_weekday = day_of_week_mapping.get(booking.day_of_week, 0)
+
+    # Find the first occurrence of the booking's day_of_week within the term
+    while current_date.weekday() != booking_weekday:
+        current_date += timedelta(days=1)
+
+    while current_date <= end_date:
+        Lesson.objects.create(
+            booking=booking,
+            date=current_date,
+            start_time=booking.start_time,
+            duration=booking.duration
+        )
+        current_date += timedelta(days=frequency_days)
 
 
 @login_required
@@ -384,6 +431,10 @@ def reject_booking(request, booking_id):
             booking.student_approval = Booking.STUDENT_REJECTED
             booking.save()
             messages.success(request, "You have rejected the booking.")
+            
+            # Optionally, delete associated lessons if any
+            Lesson.objects.filter(booking=booking).delete()
+            messages.info(request, "All associated lessons have been canceled.")
         else:
             messages.info(request, "You have already rejected this booking.")
     # Check if the user is the tutor
@@ -392,6 +443,10 @@ def reject_booking(request, booking_id):
             booking.tutor_approval = Booking.TUTOR_REJECTED
             booking.save()
             messages.success(request, "You have rejected the booking.")
+            
+            # Optionally, delete associated lessons if any
+            Lesson.objects.filter(booking=booking).delete()
+            messages.info(request, "All associated lessons have been canceled.")
         else:
             messages.info(request, "You have already rejected this booking.")
     else:
@@ -436,7 +491,6 @@ def calendar_bookings_api(request):
     user = request.user
     logger.debug(f"Fetching calendar data for user: {user}")
 
-    # Filter approved bookings for the current user
     if user.account_type == 'student':
         bookings = Booking.objects.filter(student=user, status=Booking.ACCEPTED)
     elif user.account_type == 'tutor':
@@ -467,46 +521,32 @@ def calendar_bookings_api(request):
 
     return JsonResponse(events, safe=False)
 
-def generate_invoices():
-    """Generate invoices for all accepted bookings that do not already have an invoice."""
-    bookings = Booking.objects.filter(status=Booking.ACCEPTED).exclude(invoices__isnull=False)
-    
-    for booking in bookings:
-        tutor = booking.tutor
-        student = booking.student
-        duration_hours = Decimal(booking.duration.total_seconds()) / Decimal(3600) 
-        hourly_rate = tutor.hourly_rate 
-        total_amount = duration_hours * hourly_rate  
 
-        Invoice.objects.create(
-            booking=booking,
-            tutor=tutor,
-            student=student,
-            total_hours=duration_hours,
-            total_amount=total_amount,
-        )
-        
-@staff_member_required
-def admin_manage_invoices(request):
-    invoices = Invoice.objects.all()
-    return render(request, 'admin_manage_invoices.html', {'invoices': invoices})
 
-@staff_member_required
-def admin_generate_invoices(request):
+
+
+#...
+@require_http_methods(['GET', 'POST'])
+@login_required
+def tutor_availability(request):
+    """Allow tutors to select their availability for existing terms."""
+    user = request.user
+    # Check if the user is a tutor
+    if not hasattr(user, 'tutor'):
+        messages.error(request, "Only tutors can set availability.")
+        return redirect('dashboard')
+
     if request.method == 'POST':
-        generate_invoices()
-        messages.success(request, "Invoices have been generated successfully!!!!!")
-        return redirect('admin_manage_invoices')
+        form = TutorAvailablityForm(request.POST)
+        if form.is_valid():
+            availability = form.save(commit=False)
+            availability.tutor = user.tutor  # Associate the logged-in tutor
+            availability.save()
+            messages.success(request, "Your availability has been updated.")
+            return redirect('dashboard')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = TutorAvailablityForm()
 
-@staff_member_required
-def admin_mark_invoice_paid(request, invoice_id):
-    invoice = get_object_or_404(Invoice, id=invoice_id)
-    if request.method == 'POST':
-        invoice.mark_as_paid()
-        messages.success(request, f"Invoice {invoice.id} marked as paid.")
-        return redirect('admin_manage_invoices')
-    
-@staff_member_required
-def admin_booking_detail(request, booking_id):
-    booking = get_object_or_404(Booking, id=booking_id)
-    return render(request, 'admin_booking_detail.html', {'booking': booking})
+    return render(request, 'tutor_profile_availability.html', {'form': form})
