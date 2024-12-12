@@ -12,3 +12,4 @@ pytz
 six
 sqlparse
 typing_extensions
+django-multiselectfiel
