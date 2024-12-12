@@ -3,9 +3,9 @@ Team Pelican
 ## Team members
 The members of the team are:
 - Marc-Adrian Mot
-- Chengang Shen
 - Junjie Zhou
 - Mert Ayranci 
+- *enter full name 4 here*
 - *Hassan Muddassir*
 
 ## Project structure

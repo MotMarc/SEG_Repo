@@ -2,16 +2,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-
 from tutorials import views  # Ensure 'tutorials' is your app name
 from tutorials.views import calendar_bookings_api
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('invoices/admin/invoices/', views.admin_manage_invoices, name='admin_manage_invoices'),
-    path('invoices/admin/generate/', views.admin_generate_invoices, name='admin_generate_invoices'),
-    path('invoices/admin/booking/<int:booking_id>/', views.admin_booking_detail, name='admin_booking_detail'),
-    path('invoices/admin/<int:invoice_id>/mark-paid/', views.admin_mark_invoice_paid, name='admin_mark_invoice_paid'),
     path('', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('log_in/', views.LogInView.as_view(), name='log_in'),
@@ -43,6 +39,10 @@ urlpatterns = [
     
     path('api/calendar/', views.booking_calendar_data, name='booking_calendar_data'),
     path('api/calendar-bookings/', views.calendar_bookings_api, name='calendar_bookings_api'),
+
+    #...
+    path('tutor/profile/availability/', views.tutor_availability, name='tutor_availability'),
+
 
 ]
 
