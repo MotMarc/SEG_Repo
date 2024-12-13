@@ -60,6 +60,7 @@ class Command(BaseCommand):
         self.create_languages()
         self.create_specializations()
         self.create_tutors()
+        self.create_admin_accounts()
         self.seed_tutor_availability()
         self.create_bookings()
         
@@ -100,6 +101,35 @@ class Command(BaseCommand):
             first_name=data['first_name'],
             last_name=data['last_name'],
         )
+
+    def create_admin_accounts(self):
+        """Create 10 admin accounts."""
+        admin_fixtures = [
+            {'username': f'@admin{i}', 'email': f'admin{i}_{randint(100, 999)}@example.org', 'first_name': f'Admin{i}', 'last_name': 'User'}
+            for i in range(1, 11)  # Generate 10 admin accounts
+        ]
+
+        for admin_data in admin_fixtures:
+            try:
+                user, created = User.objects.get_or_create(
+                    username=admin_data['username'],
+                    email=admin_data['email'],
+                    defaults={
+                        'first_name': admin_data['first_name'],
+                        'last_name': admin_data['last_name'],
+                    }
+                )
+                if created:
+                    user.set_password(self.DEFAULT_PASSWORD)
+                    user.is_staff = True
+                    user.is_superuser = True
+                    user.save()
+                    self.stdout.write(self.style.SUCCESS(f"Created admin: {user.username}"))
+                else:
+                    self.stdout.write(f"Admin already exists: {user.username}")
+            except Exception as e:
+                self.stderr.write(f"Error creating admin {admin_data['username']}: {e}")
+
     #term creation
     def create_terms(self):
         """Seed the database with academic terms."""
@@ -142,7 +172,6 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(self.style.SUCCESS(f"Added specialization: {specialization}"))
             
-            # Link specialization to languages based on the predefined map
             applicable_languages = SPECIALIZATION_LANGUAGE_MAP.get(specialization, [])
             for lang_name in applicable_languages:
                 try:
@@ -156,7 +185,7 @@ class Command(BaseCommand):
 
     def create_tutors(self):
         """Seed tutors into the database."""
-        TUTOR_COUNT = 100  # Specify the number of tutors to generate
+        TUTOR_COUNT = 100  
         existing_tutors = Tutor.objects.count()
 
         while existing_tutors < TUTOR_COUNT:
@@ -182,8 +211,8 @@ class Command(BaseCommand):
 
                 tutor, created = Tutor.objects.get_or_create(user=user)
                 if created:
-                    languages = Language.objects.order_by('?')[:3]  # Assign random 3 languages
-                    specializations = Specialization.objects.order_by('?')[:2]  # Assign random 2 specializations
+                    languages = Language.objects.order_by('?')[:3]  
+                    specializations = Specialization.objects.order_by('?')[:2]  
                     tutor.languages.set(languages)
                     tutor.specializations.set(specializations)
                     tutor.save()
@@ -209,7 +238,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Insufficient data to create bookings. Seed terms, languages, and tutors first."))
             return
 
-        for i in range(10):  # Create 10 sample bookings
+        for i in range(10):  
             student = students.order_by('?').first()
             language = languages.order_by('?').first()
             specialization = specializations.order_by('?').first() if random() > 0.5 else None
@@ -219,7 +248,7 @@ class Command(BaseCommand):
             else:
                 eligible_tutors = tutors
 
-            # Randomly select a day and term
+            
             days_of_week = [choice[0] for choice in Booking.DAYS_OF_WEEK]
             day_of_week = self.faker.random_element(days_of_week)
             term = terms.order_by('?').first()
@@ -229,7 +258,7 @@ class Command(BaseCommand):
                 availabilities__day_of_week__icontains=day_of_week
             ).distinct()
 
-            # Retry logic for tutors
+            
             if not available_tutors.exists():
                 for retry_day in days_of_week:
                     if retry_day != day_of_week:
@@ -241,7 +270,7 @@ class Command(BaseCommand):
                             day_of_week = retry_day
                             break
                 else:
-                    # Retry with a different term
+                    
                     for retry_term in terms:
                         available_tutors = eligible_tutors.filter(
                             availabilities__term=retry_term,
@@ -256,7 +285,7 @@ class Command(BaseCommand):
 
             tutor = available_tutors.order_by('?').first()
 
-            # Randomly generate booking details
+           
             start_time = self.faker.time_object()
             duration = timedelta(hours=self.faker.random_int(min=1, max=3))
             frequency = self.faker.random_element([Booking.WEEKLY, Booking.FORTNIGHTLY])
@@ -290,14 +319,14 @@ class Command(BaseCommand):
     
         for tutor in tutors:
             for term in terms:
-                # Add availability for all days of the week
+               
                 for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']:
                     TutorAvalibility.objects.get_or_create(
                         tutor=tutor,
                         term=term,
                         day_of_week=day,
-                        start_time=time(9, 0),  # Start time 9:00 AM
-                        end_time=time(17, 0)   # End time 5:00 PM
+                        start_time=time(9, 0), 
+                        end_time=time(17, 0)   
                     )
 
 
