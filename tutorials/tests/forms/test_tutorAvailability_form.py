@@ -1,7 +1,7 @@
 from django.test import TestCase
 from datetime import time
 from tutorials.forms import TutorAvailablityForm
-from tutorials.models import Term, Tutor, TutorAvalibility, User
+from tutorials.models import Term, Tutor, TutorAvailibility, User
 
 class TutorAvailabilityFormTests(TestCase):
     def setUp(self):

@@ -1,6 +1,6 @@
 from django.test import TestCase
 from datetime import time, date
-from tutorials.models import Tutor, User, Term, TutorAvalibility
+from tutorials.models import Tutor, User, Term, TutorAvailibility
 
 class TutorAvailabilityModelTests(TestCase):
     def setUp(self):
@@ -25,7 +25,7 @@ class TutorAvailabilityModelTests(TestCase):
         """
         Test creating a valid TutorAvailability.
         """
-        availability = TutorAvalibility.objects.create(
+        availability = TutorAvailibility.objects.create(
             tutor=self.tutor,
             term=self.term,
             day_of_week=['monday', 'wednesday'],
@@ -39,7 +39,7 @@ class TutorAvailabilityModelTests(TestCase):
         """
         Test that availability outside 9:00-19:00 raises ValidationError.
         """
-        availability = TutorAvalibility(
+        availability = TutorAvailibility(
             tutor=self.tutor,
             term=self.term,
             day_of_week=['friday'],
@@ -53,7 +53,7 @@ class TutorAvailabilityModelTests(TestCase):
         """
         Test that start_time >= end_time raises ValidationError.
         """
-        availability = TutorAvalibility(
+        availability = TutorAvailibility(
             tutor=self.tutor,
             term=self.term,
             day_of_week=['tuesday'],

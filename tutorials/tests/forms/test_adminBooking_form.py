@@ -1,7 +1,7 @@
 from django.test import TestCase
 from datetime import time, timedelta
 from tutorials.forms import AdminBookingForm
-from tutorials.models import Tutor, User, Language, Term, TutorAvalibility, Booking
+from tutorials.models import Tutor, User, Language, Term, TutorAvailibility, Booking
 
 class AdminBookingFormTests(TestCase):
     def setUp(self):
@@ -12,7 +12,7 @@ class AdminBookingFormTests(TestCase):
         )
         self.tutor = Tutor.objects.create(user=self.user_tutor)
         self.term = Term.objects.create(name="May-July", start_date="2024-05-01", end_date="2024-07-31")
-        TutorAvalibility.objects.create(
+        TutorAvailibility.objects.create(
             tutor=self.tutor,
             term=self.term,
             day_of_week=['monday'],

@@ -1,6 +1,6 @@
 from django.test import TestCase
 from datetime import date, time, timedelta
-from tutorials.models import Booking, Tutor, User, Term, Language, TutorAvalibility
+from tutorials.models import Booking, Tutor, User, Term, Language, TutorAvailibility
 
 class BookingModelTests(TestCase):
     def setUp(self):
@@ -28,7 +28,7 @@ class BookingModelTests(TestCase):
             start_date=date(2024, 5, 1),
             end_date=date(2024, 7, 31)
         )
-        TutorAvalibility.objects.create(
+        TutorAvailibility.objects.create(
             tutor=self.tutor,
             term=self.term,
             day_of_week=['monday'],
