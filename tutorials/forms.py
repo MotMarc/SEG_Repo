@@ -172,9 +172,17 @@ class TutorProfileForm(forms.ModelForm):
         label="Specializations"
     )
 
+    hourly_rate = forms.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        required = False,
+        widget = forms.NumberInput(attrs = {'class': 'form-control', 'placeholder': 'Enter your preferred hourly rate here'}),
+        label = "Hourly Rate",
+    )
+
     class Meta:
         model = Tutor
-        fields = ['languages', 'specializations']
+        fields = ['languages', 'specializations', 'hourly_rate']
 
 class AdminBookingForm(forms.ModelForm):
     """Form for admins to create a booking."""
