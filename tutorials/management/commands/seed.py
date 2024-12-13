@@ -90,7 +90,7 @@ class Command(BaseCommand):
             self.create_user(data)
         except:
             pass
-
+    #user creation
     def create_user(self, data):
         User.objects.create_user(
             username=data['username'],
@@ -99,7 +99,7 @@ class Command(BaseCommand):
             first_name=data['first_name'],
             last_name=data['last_name'],
         )
-
+    #term creation
     def create_terms(self):
         """Seed the database with academic terms."""
         term_fixtures = [
@@ -116,7 +116,6 @@ class Command(BaseCommand):
                 self.stderr.write(f"Invalid term dates: {term_data['name']}. Start date must be before end date.")
                 continue
 
-            # Create term if it doesn't exist
             term, created = Term.objects.get_or_create(
                 name=term_data["name"],
                 defaults={"start_date": start_date, "end_date": end_date}
@@ -127,7 +126,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(f"Term already exists: {term.name}")
 
-
+    #language creation
     def create_languages(self):
         """Seed languages into the database."""
         for language in language_fixtures:
@@ -165,14 +164,12 @@ class Command(BaseCommand):
                 }
             )
             if created:
-                # Set password separately to ensure it's hashed
                 user.set_password(self.DEFAULT_PASSWORD)
                 user.save()
                 self.stdout.write(self.style.SUCCESS(f"Added user for tutor: {user.username}"))
 
             tutor, created = Tutor.objects.get_or_create(user=user)
             if created:
-                # Assign random languages and specializations
                 languages = Language.objects.order_by('?')[:3]
                 specializations = Specialization.objects.order_by('?')[:2]
                 tutor.languages.set(languages)
