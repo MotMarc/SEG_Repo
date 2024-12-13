@@ -1,11 +1,10 @@
 from django.core.management.base import BaseCommand, CommandError
-
-from tutorials.models import User, Term, Tutor, Language, Specialization
-
+from tutorials.models import User, Term, Tutor, Language, Specialization, Booking, TutorAvalibility
+from django.core.exceptions import ValidationError
 import pytz
 from faker import Faker
 from random import randint, random
-from datetime import datetime
+from datetime import datetime, timedelta, time
 
 
 user_fixtures = [
@@ -61,7 +60,9 @@ class Command(BaseCommand):
         self.create_languages()
         self.create_specializations()
         self.create_tutors()
-
+        self.seed_tutor_availability()
+        self.create_bookings()
+        
     def create_users(self):
         self.generate_user_fixtures()
         self.generate_random_users()
@@ -152,31 +153,152 @@ class Command(BaseCommand):
                     self.stderr.write(f"Language '{lang_name}' does not exist. Cannot link to specialization '{specialization}'.")
             
             spec.save()
+
     def create_tutors(self):
         """Seed tutors into the database."""
-        for tutor_data in tutor_fixtures:
-            user, created = User.objects.get_or_create(
-                username=tutor_data['username'],
-                email=tutor_data['email'],
-                defaults={
-                    'first_name': tutor_data['first_name'],
-                    'last_name': tutor_data['last_name'],
-                }
+        TUTOR_COUNT = 100  # Specify the number of tutors to generate
+        existing_tutors = Tutor.objects.count()
+
+        while existing_tutors < TUTOR_COUNT:
+            print(f"Seeding tutor {existing_tutors}/{TUTOR_COUNT}", end='\r')
+            first_name = self.faker.first_name()
+            last_name = self.faker.last_name()
+            username = create_username(first_name, last_name)
+            email = create_email(first_name, last_name)
+
+            try:
+                user, created = User.objects.get_or_create(
+                    username=username,
+                    email=email,
+                    defaults={
+                        'first_name': first_name,
+                        'last_name': last_name,
+                    }
+                )
+                if created:
+                    user.set_password(self.DEFAULT_PASSWORD)
+                    user.save()
+                    self.stdout.write(self.style.SUCCESS(f"Added user for tutor: {user.username}"))
+
+                tutor, created = Tutor.objects.get_or_create(user=user)
+                if created:
+                    languages = Language.objects.order_by('?')[:3]  # Assign random 3 languages
+                    specializations = Specialization.objects.order_by('?')[:2]  # Assign random 2 specializations
+                    tutor.languages.set(languages)
+                    tutor.specializations.set(specializations)
+                    tutor.save()
+                    self.stdout.write(self.style.SUCCESS(f"Added tutor: {user.username}"))
+
+            except Exception as e:
+                self.stderr.write(f"Error creating tutor: {e}")
+                continue
+
+            existing_tutors = Tutor.objects.count()
+        print("Tutor seeding complete.")
+
+
+    def create_bookings(self):
+        """Create sample bookings for seeded data."""
+        terms = Term.objects.all()
+        languages = Language.objects.all()
+        specializations = Specialization.objects.all()
+        tutors = Tutor.objects.all()
+        students = User.objects.filter(account_type='student')
+
+        if not terms.exists() or not languages.exists() or not tutors.exists():
+            self.stdout.write(self.style.WARNING("Insufficient data to create bookings. Seed terms, languages, and tutors first."))
+            return
+
+        for i in range(10):  # Create 10 sample bookings
+            student = students.order_by('?').first()
+            language = languages.order_by('?').first()
+            specialization = specializations.order_by('?').first() if random() > 0.5 else None
+
+            if specialization:
+                eligible_tutors = tutors.filter(specializations=specialization)
+            else:
+                eligible_tutors = tutors
+
+            # Randomly select a day and term
+            days_of_week = [choice[0] for choice in Booking.DAYS_OF_WEEK]
+            day_of_week = self.faker.random_element(days_of_week)
+            term = terms.order_by('?').first()
+
+            available_tutors = eligible_tutors.filter(
+                availabilities__term=term,
+                availabilities__day_of_week__icontains=day_of_week
+            ).distinct()
+
+            # Retry logic for tutors
+            if not available_tutors.exists():
+                for retry_day in days_of_week:
+                    if retry_day != day_of_week:
+                        available_tutors = eligible_tutors.filter(
+                            availabilities__term=term,
+                            availabilities__day_of_week__icontains=retry_day
+                        ).distinct()
+                        if available_tutors.exists():
+                            day_of_week = retry_day
+                            break
+                else:
+                    # Retry with a different term
+                    for retry_term in terms:
+                        available_tutors = eligible_tutors.filter(
+                            availabilities__term=retry_term,
+                            availabilities__day_of_week__icontains=day_of_week
+                        ).distinct()
+                        if available_tutors.exists():
+                            term = retry_term
+                            break
+                    else:
+                        self.stderr.write(f"Skipping booking: No tutors available for term {term.name}.")
+                        continue
+
+            tutor = available_tutors.order_by('?').first()
+
+            # Randomly generate booking details
+            start_time = self.faker.time_object()
+            duration = timedelta(hours=self.faker.random_int(min=1, max=3))
+            frequency = self.faker.random_element([Booking.WEEKLY, Booking.FORTNIGHTLY])
+            experience_level = self.faker.text(max_nb_chars=100)
+
+            booking = Booking(
+                student=student,
+                tutor=tutor,
+                language=language,
+                term=term,
+                specialization=specialization,
+                day_of_week=day_of_week,
+                start_time=start_time,
+                duration=duration,
+                frequency=frequency,
+                experience_level=experience_level,
+                student_approval=Booking.STUDENT_APPROVED if random() > 0.5 else Booking.STUDENT_APPROVAL_PENDING,
+                tutor_approval=Booking.TUTOR_APPROVED if random() > 0.5 else Booking.TUTOR_APPROVAL_PENDING,
             )
-            if created:
-                user.set_password(self.DEFAULT_PASSWORD)
-                user.save()
-                self.stdout.write(self.style.SUCCESS(f"Added user for tutor: {user.username}"))
 
-            tutor, created = Tutor.objects.get_or_create(user=user)
-            if created:
-                languages = Language.objects.order_by('?')[:3]
-                specializations = Specialization.objects.order_by('?')[:2]
-                tutor.languages.set(languages)
-                tutor.specializations.set(specializations)
-                tutor.save()
-                self.stdout.write(self.style.SUCCESS(f"Added tutor: {user.username}"))
+            try:
+                booking.full_clean()
+                booking.save()
+                self.stdout.write(self.style.SUCCESS(f"Created booking: {booking}"))
+            except ValidationError as e:
+                self.stderr.write(f"Error creating booking: {e}")
 
+    def seed_tutor_availability(self):
+        terms = Term.objects.all()
+        tutors = Tutor.objects.all()
+    
+        for tutor in tutors:
+            for term in terms:
+                # Add availability for all days of the week
+                for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']:
+                    TutorAvalibility.objects.get_or_create(
+                        tutor=tutor,
+                        term=term,
+                        day_of_week=day,
+                        start_time=time(9, 0),  # Start time 9:00 AM
+                        end_time=time(17, 0)   # End time 5:00 PM
+                    )
 
 
 def create_username(first_name, last_name):
@@ -184,5 +306,3 @@ def create_username(first_name, last_name):
 
 def create_email(first_name, last_name):
     return first_name + '.' + last_name + '@example.org'
-
-
