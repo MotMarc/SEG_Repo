@@ -16,7 +16,7 @@ class LanguageModelTests(TestCase):
         """
         Language.objects.create(name="Python")
         with self.assertRaises(Exception):
-            # Attempting to create a duplicate entry
+            
             Language.objects.create(name="Python")
 
     def test_language_str_method(self):

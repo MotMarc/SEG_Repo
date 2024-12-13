@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization, TutorAvalibility
-from .forms import AdminBookingForm  # Import the AdminBookingForm
+from .forms import AdminBookingForm  
 
 
 @admin.register(User)
@@ -15,7 +15,7 @@ class UserAdmin(admin.ModelAdmin):
 #admin booking
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    form = AdminBookingForm  # Use the custom admin form
+    form = AdminBookingForm  
     list_display = ('student', 'get_tutor', 'language', 'term', 'start_time', 'frequency', 'status')
     list_filter = ('status', 'term', 'frequency', 'language')
     search_fields = ('student__username', 'tutor__user__username', 'language__name', 'term__name')
@@ -47,7 +47,7 @@ class BookingAdmin(admin.ModelAdmin):
                 duration=booking.duration
             )
             current_date += timedelta(days=frequency_days)
-#...
+
 @admin.register(Language)
 class LanguageAdmin(admin.ModelAdmin):
     list_display = ('name',)

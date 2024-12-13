@@ -32,7 +32,7 @@ class TutorAvailabilityModelTests(TestCase):
             start_time=time(10, 0),
             end_time=time(14, 0),
         )
-        availability.clean()  # Should not raise ValidationError
+        availability.clean()  
         self.assertEqual(str(availability), "John Doe (monday, wednesday): 10:00:00-14:00:00")
 
     def test_invalid_availability_outside_hours(self):
@@ -43,8 +43,8 @@ class TutorAvailabilityModelTests(TestCase):
             tutor=self.tutor,
             term=self.term,
             day_of_week=['friday'],
-            start_time=time(8, 0),  # Invalid start time
-            end_time=time(20, 0),  # Invalid end time
+            start_time=time(8, 0),  
+            end_time=time(20, 0),  
         )
         with self.assertRaises(Exception):
             availability.clean()
@@ -58,7 +58,7 @@ class TutorAvailabilityModelTests(TestCase):
             term=self.term,
             day_of_week=['tuesday'],
             start_time=time(14, 0),
-            end_time=time(10, 0),  # Invalid time range
+            end_time=time(10, 0),  
         )
         with self.assertRaises(Exception):
             availability.clean()

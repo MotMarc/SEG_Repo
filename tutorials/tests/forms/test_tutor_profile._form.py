@@ -20,10 +20,10 @@ class TutorProfileFormTests(TestCase):
             'languages': [self.language1.id, self.language2.id],
             'specializations': [self.specialization1.id],
         }, instance=self.tutor)
-        self.assertTrue(form.is_valid())  # Form should be valid
+        self.assertTrue(form.is_valid())  
         tutor = form.save()
-        self.assertIn(self.language1, tutor.languages.all())  # Language should be saved
-        self.assertIn(self.specialization1, tutor.specializations.all())  # Specialization should be saved
+        self.assertIn(self.language1, tutor.languages.all())  
+        self.assertIn(self.specialization1, tutor.specializations.all())  
 
     def test_missing_required_languages(self):
         """Test that missing required languages raises validation error."""
@@ -31,14 +31,14 @@ class TutorProfileFormTests(TestCase):
             'languages': [],
             'specializations': [self.specialization1.id],
         }, instance=self.tutor)
-        self.assertFalse(form.is_valid())  # Form should not be valid
-        self.assertIn('languages', form.errors)  # Error should be on languages field
+        self.assertFalse(form.is_valid())  
+        self.assertIn('languages', form.errors)  
 
     def test_invalid_specializations(self):
         """Test invalid specialization data."""
         form = TutorProfileForm(data={
             'languages': [self.language1.id],
-            'specializations': [999],  # Invalid specialization ID
+            'specializations': [999],  
         }, instance=self.tutor)
-        self.assertFalse(form.is_valid())  # Form should not be valid
-        self.assertIn('specializations', form.errors)  # Error should be on specializations field
+        self.assertFalse(form.is_valid())  
+        self.assertIn('specializations', form.errors)  

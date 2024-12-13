@@ -20,9 +20,9 @@ class TutorAvailabilityFormTests(TestCase):
             'start_time': time(9, 0),
             'end_time': time(17, 0),
         })
-        self.assertTrue(form.is_valid())  # Form should be valid
+        self.assertTrue(form.is_valid())  
         availability = form.save(commit=False)
-        self.assertEqual(availability.term, self.term)  # Term should match
+        self.assertEqual(availability.term, self.term)  
 
     def test_invalid_time_range(self):
         """Test that end_time earlier than start_time raises validation error."""
@@ -32,17 +32,17 @@ class TutorAvailabilityFormTests(TestCase):
             'start_time': time(17, 0),
             'end_time': time(9, 0),
         })
-        self.assertFalse(form.is_valid())  # Form should not be valid
-        self.assertIn('end_time', form.errors)  # Error should be on end_time field
+        self.assertFalse(form.is_valid()) 
+        self.assertIn('end_time', form.errors) 
 
     def test_missing_required_fields(self):
         """Test missing required fields raise validation errors."""
         form = TutorAvailablityForm(data={
-            'term': '',  # Missing term
+            'term': '',  
             'day_of_week': [],
             'start_time': '',
             'end_time': '',
         })
-        self.assertFalse(form.is_valid())  # Form should not be valid
-        self.assertIn('term', form.errors)  # Error should be on term
-        self.assertIn('day_of_week', form.errors)  # Error should be on day_of_week
+        self.assertFalse(form.is_valid())  
+        self.assertIn('term', form.errors)  
+        self.assertIn('day_of_week', form.errors)  

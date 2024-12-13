@@ -13,7 +13,7 @@ class TermModelTests(TestCase):
             start_date=date(2024, 9, 1),
             end_date=date(2024, 12, 20)
         )
-        term.clean()  # Explicitly trigger validation
+        term.clean()  
         self.assertEqual(term.name, "September-Christmas")
         self.assertEqual(str(term), "September-Christmas (2024-09-01 - 2024-12-20)")
 
@@ -23,7 +23,7 @@ class TermModelTests(TestCase):
         """
         term = Term(
             name="September-Christmas",
-            start_date=date(2024, 8, 31),  # Invalid start date
+            start_date=date(2024, 8, 31),  
             end_date=date(2024, 12, 20)
         )
         with self.assertRaises(ValidationError):
@@ -48,7 +48,7 @@ class TermModelTests(TestCase):
         term = Term(
             name="May-July",
             start_date=date(2024, 7, 1),
-            end_date=date(2024, 6, 30)  # End date is earlier than start date
+            end_date=date(2024, 6, 30)  
         )
         with self.assertRaises(ValidationError):
             term.clean()
@@ -59,7 +59,7 @@ class TermModelTests(TestCase):
         """
         term = Term(
             name="May-July",
-            start_date=date(2024, 4, 30),  # Invalid start date
+            start_date=date(2024, 4, 30),  
             end_date=date(2024, 7, 31)
         )
         with self.assertRaises(ValidationError):

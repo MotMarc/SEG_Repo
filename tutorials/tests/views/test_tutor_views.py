@@ -19,4 +19,4 @@ class TutorProfileViewTests(TestCase):
         student_user = User.objects.create_user(username="@student", password="Password123", account_type="student")
         self.client.login(username="@student", password="Password123")
         response = self.client.get(reverse('tutor_profile'))
-        self.assertEqual(response.status_code, 302)  # Redirected to dashboard
+        self.assertEqual(response.status_code, 302) 

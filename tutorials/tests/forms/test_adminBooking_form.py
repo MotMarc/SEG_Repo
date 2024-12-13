@@ -23,7 +23,7 @@ class AdminBookingFormTests(TestCase):
     def test_valid_booking(self):
         """Test valid booking creation."""
         form = AdminBookingForm(data={
-            'student': None,  # Assuming a student user is assigned during testing
+            'student': None, 
             'tutor': self.tutor.id,
             'language': self.language.id,
             'specialization': None,
@@ -33,13 +33,12 @@ class AdminBookingFormTests(TestCase):
             'duration': timedelta(hours=1),
             'frequency': 'Weekly',
         })
-        self.assertTrue(form.is_valid())  # Form should be valid
+        self.assertTrue(form.is_valid())  
         booking = form.save(commit=False)
-        self.assertEqual(booking.tutor, self.tutor)  # Tutor should match
+        self.assertEqual(booking.tutor, self.tutor)  
 
     def test_booking_time_conflict(self):
         """Test that overlapping bookings raise validation error."""
-        # Create an existing booking
         Booking.objects.create(
             tutor=self.tutor,
             term=self.term,
@@ -56,9 +55,9 @@ class AdminBookingFormTests(TestCase):
             'specialization': None,
             'term': self.term.id,
             'day_of_week': 'Monday',
-            'start_time': '10:30',  # Conflicts with existing booking
+            'start_time': '10:30',  
             'duration': timedelta(hours=1),
             'frequency': 'Weekly',
         })
-        self.assertFalse(form.is_valid())  # Form should not be valid
-        self.assertIn(None, form.errors)  # Error should be global
+        self.assertFalse(form.is_valid())  
+        self.assertIn(None, form.errors)  

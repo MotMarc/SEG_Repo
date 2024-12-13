@@ -87,14 +87,12 @@ class Tutor(models.Model):
 
 
 class Term(models.Model):
-    # Define a limited set of choices for the term name
     TERM_CHOICES = [
         ('September-Christmas', 'September-Christmas'),
         ('January-Easter', 'January-Easter'),
         ('May-July', 'May-July'),
     ]
 
-    # Use a CharField with predefined choices for the term name
     name = models.CharField(
         max_length=50,
         choices=TERM_CHOICES,
@@ -108,27 +106,21 @@ class Term(models.Model):
         Validate the start_date and end_date based on the selected term name.
         Also ensure that the start_date is before the end_date.
         """
-        # Validate date ranges according to the chosen term name
         if self.name == 'September-Christmas':
-            # The start month should be between September(9) and December(12)
             if not (9 <= self.start_date.month <= 12):
                 raise ValidationError("September-Christmas term must start between September and December.")
 
         elif self.name == 'January-Easter':
-            # The start month should be between January(1) and April(4)
             if not (1 <= self.start_date.month <= 4):
                 raise ValidationError("January-Easter term must start between January and April.")
         elif self.name == 'May-July':
-            # The start month should be between May(5) and July(7)
             if not (5 <= self.start_date.month <= 7):
                 raise ValidationError("May-July term must start between May and July.")
 
-        # Ensure the start date is before the end date
         if self.start_date >= self.end_date:
             raise ValidationError("Term start date must be before the end date.")
 
     def __str__(self):
-        # Return a string representation of the term
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
 
@@ -339,12 +331,11 @@ class Booking(models.Model):
             if not self.tutor.specializations.filter(id=self.specialization.id).exists():
                 raise ValidationError({'specialization': f"The selected tutor does not offer specialization in {self.specialization}."})
 
-        # Validate against tutor availability
         if self.tutor:
             availability = TutorAvalibility.objects.filter(
                 tutor=self.tutor,
                 term=self.term,
-                day_of_week__icontains=self.day_of_week  # Ensure day matches MultiSelectField
+                day_of_week__icontains=self.day_of_week  
             )
 
             if not availability.exists():
@@ -352,7 +343,6 @@ class Booking(models.Model):
                     f"Tutor is not available on {self.day_of_week} for the selected term."
                 )
 
-            # Check if start_time and duration fall within any available slots
             end_time = (datetime.combine(datetime.today(), self.start_time) + self.duration).time()
             for slot in availability:
                 if slot.start_time <= self.start_time < slot.end_time and slot.start_time < end_time <= slot.end_time:
@@ -416,7 +406,6 @@ class Booking(models.Model):
 
         recurring_dates = []
 
-    # Map day_of_week string to Python's weekday integer (Monday=0, Sunday=6)
         day_of_week_mapping = {
             'Monday': 0,
             'Tuesday': 1,
@@ -458,13 +447,12 @@ class Booking(models.Model):
     
         calendar_data = []
     
-        # Iterate over bookings to create events for recurring days
         for booking in bookings:
             recurring_dates = booking.get_recurring_dates()
             for date in recurring_dates:
                 calendar_data.append({
                     'title': f"{booking.language.name} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
-                    'date': date.isoformat(),  # Format as YYYY-MM-DD
+                    'date': date.isoformat(),  
                     'description': f"Subject: {booking.specialization.name if booking.specialization else 'General'}",
                 })
     
@@ -476,7 +464,6 @@ class Booking(models.Model):
     
     def save(self, *args, **kwargs):
         """Override save method to update status based on approvals."""
-        # Update status based on approvals
         if self.student_approval == Booking.STUDENT_APPROVED and self.tutor_approval == Booking.TUTOR_APPROVED:
             self.status = Booking.ACCEPTED
         elif self.student_approval == Booking.STUDENT_REJECTED or self.tutor_approval == Booking.TUTOR_REJECTED:

@@ -49,7 +49,7 @@ class BookingModelTests(TestCase):
             day_of_week="Monday",
             duration=timedelta(hours=1)
         )
-        booking.clean()  # Should not raise ValidationError
+        booking.clean()  
         self.assertEqual(str(booking), "Booking 1: Alice Wonder with John Doe for Python")
 
     def test_booking_outside_availability(self):
@@ -61,7 +61,7 @@ class BookingModelTests(TestCase):
             student=self.user_student,
             language=self.language,
             term=self.term,
-            start_time=time(15, 0),  # Outside availability
+            start_time=time(15, 0),  
             day_of_week="Monday",
             duration=timedelta(hours=1)
         )
@@ -107,4 +107,4 @@ class BookingModelTests(TestCase):
             frequency="Weekly"
         )
         recurring_dates = booking.get_recurring_dates()
-        self.assertEqual(len(recurring_dates), 13)  # Number of Mondays in the term
+        self.assertEqual(len(recurring_dates), 13)  

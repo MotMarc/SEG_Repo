@@ -28,8 +28,8 @@ class CreateBookingViewTests(TestCase):
             'frequency': 'Weekly',
             'experience_level': 'Intermediate level.',
         })
-        self.assertEqual(response.status_code, 302)  # Redirect on success
-        self.assertTrue(Booking.objects.exists())  # Booking created
+        self.assertEqual(response.status_code, 302)  
+        self.assertTrue(Booking.objects.exists()) 
 
     def test_create_booking_invalid_data(self):
         """Test that invalid data does not create a booking."""
@@ -38,5 +38,5 @@ class CreateBookingViewTests(TestCase):
             'language': '',  # Missing language
             'term': self.term.id,
         })
-        self.assertEqual(response.status_code, 200)  # Form re-rendered
-        self.assertFalse(Booking.objects.exists())  # Booking not created
+        self.assertEqual(response.status_code, 200)  
+        self.assertFalse(Booking.objects.exists())  

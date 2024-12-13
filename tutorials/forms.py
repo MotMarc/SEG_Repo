@@ -205,17 +205,14 @@ class AdminBookingForm(forms.ModelForm):
         duration = cleaned_data.get('duration')
 
         if tutor and term and day_of_week and start_time and duration:
-            # Calculate the end time of the booking
             end_time = (datetime.combine(datetime.today(), start_time) + duration).time()
 
-            # Fetch the tutor's availability for the selected term and day of the week
             availability = TutorAvalibility.objects.filter(
                 tutor=tutor,
                 term=term,
                 day_of_week__icontains=day_of_week
             )
 
-            # Check if the booking time overlaps with the tutor's available time slots
             if not availability.exists():
                 self.add_error(
                     None,
@@ -226,14 +223,11 @@ class AdminBookingForm(forms.ModelForm):
                     if slot.start_time <= start_time < slot.end_time and slot.start_time < end_time <= slot.end_time:
                         break
                 else:
-                    # Construct a detailed error message with the available time slots
                     available_slots = ", ".join(
                         f"{slot.start_time.strftime('%H:%M')} to {slot.end_time.strftime('%H:%M')}"
                         for slot in availability
                     )
                     
-
-            # Check for overlapping bookings
             overlapping_bookings = Booking.objects.filter(
                 tutor=tutor,
                 term=term,

@@ -6,7 +6,6 @@ class TutorModelTests(TestCase):
         """
         Set up initial data for the tests.
         """
-        # Create a user with account_type='tutor'
         self.user_tutor = User.objects.create(
             username="@tutorexample",
             first_name="John",
@@ -15,7 +14,7 @@ class TutorModelTests(TestCase):
             account_type="tutor"
         )
         
-        # Create a user with account_type='student' (should not be allowed to be a tutor)
+        
         self.user_student = User.objects.create(
             username="@studentexample",
             first_name="Jane",
@@ -24,7 +23,6 @@ class TutorModelTests(TestCase):
             account_type="student"
         )
 
-        # Create some languages and specializations
         self.language_python = Language.objects.create(name="Python")
         self.language_java = Language.objects.create(name="Java")
         self.specialization_web = Specialization.objects.create(name="Web Development")
@@ -41,7 +39,7 @@ class TutorModelTests(TestCase):
         self.assertEqual(tutor.user, self.user_tutor)
         self.assertIn(self.language_python, tutor.languages.all())
         self.assertIn(self.specialization_web, tutor.specializations.all())
-        self.assertEqual(str(tutor), "John Doe")  # From Tutor __str__()
+        self.assertEqual(str(tutor), "John Doe")  
 
     def test_create_tutor_invalid_user(self):
         """

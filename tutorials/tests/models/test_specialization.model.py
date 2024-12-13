@@ -27,7 +27,7 @@ class SpecializationModelTests(TestCase):
         """
         Specialization.objects.create(name="Data Science")
         with self.assertRaises(Exception):
-            Specialization.objects.create(name="Data Science")  # Duplicate name
+            Specialization.objects.create(name="Data Science")  
 
     def test_specialization_with_no_languages(self):
         """
