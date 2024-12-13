@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization, TutorAvalibility
+from .models import User, Booking, Tutor, Language, Term, Lesson, Specialization, TutorAvailibility
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 
@@ -207,7 +207,7 @@ class AdminBookingForm(forms.ModelForm):
         if tutor and term and day_of_week and start_time and duration:
             end_time = (datetime.combine(datetime.today(), start_time) + duration).time()
 
-            availability = TutorAvalibility.objects.filter(
+            availability = TutorAvailibility.objects.filter(
                 tutor=tutor,
                 term=term,
                 day_of_week__icontains=day_of_week
@@ -251,7 +251,7 @@ class TutorAvailablityForm(forms.ModelForm):
     )
 
     class Meta:
-        model = TutorAvalibility
+        model = TutorAvailibility
         fields = ['term', 'day_of_week', 'start_time', 'end_time']
         widgets = {
             'day_of_week': forms.CheckboxSelectMultiple(attrs={'class': 'form-check'}),

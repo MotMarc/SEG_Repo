@@ -28,7 +28,46 @@
         </div>
     </div>
 </div>
+
+<br>
+
+<!--Shows invoices in the form of a table-->
+<h4>Invoices</h4>
+{% if invoices %}
+    <table class = "table table-striped">
+        <thead>
+            <tr>
+                <th scope = "col">Name</th>
+                <th scope = "col">Date</th>
+                <th scope = "col">Payment Amount</th>
+                <th scope = "col">Status</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for invoice in invoices %}
+                <tr>
+                    <td>
+                        {% if user.account_type == "tutor" %}
+                            {{ invoice.student.first_name }} {{ invoice.student.last_name }}
+                        {% elif user.account_type == "student" %}
+                            {{ invoice.tutor.first_name }} {{ invoice.tutor.last_name }}
+                        {% endif %}
+                    </td>
+                    <td>{{ invoice.created_at }}</td>
+                    <td>${{ invoice.total_amount }}</td>
+                    <td>{{ invoice.status }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No invoices yet!</p>
+{% endif %}
+
 {% endblock %}
+<!--End of invoice block-->
+
 
 {% block extra_scripts %}
 <script>

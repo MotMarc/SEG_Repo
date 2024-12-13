@@ -81,6 +81,7 @@ class Tutor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     languages = models.ManyToManyField('Language', related_name='tutors')
     specializations = models.ManyToManyField('Specialization', related_name='specialized_tutors', blank=True)
+    hourly_rate = models.DecimalField(max_digits = 10, decimal_places = 2, default = 12.00)
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
@@ -124,7 +125,7 @@ class Term(models.Model):
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
 
-class TutorAvalibility(models.Model):
+class TutorAvailibility(models.Model):
     """Represents a tutor's availability."""
     DAY_CHOICES = [
         ('monday', 'Monday'),
@@ -332,7 +333,7 @@ class Booking(models.Model):
                 raise ValidationError({'specialization': f"The selected tutor does not offer specialization in {self.specialization}."})
 
         if self.tutor:
-            availability = TutorAvalibility.objects.filter(
+            availability = TutorAvailibility.objects.filter(
                 tutor=self.tutor,
                 term=self.term,
                 day_of_week__icontains=self.day_of_week  
@@ -481,3 +482,29 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f'Lesson on {self.date} at {self.start_time}'
+    
+class Invoice(models.Model):
+    """Represents an invoice for tutoring services."""
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Paid', 'Paid'),
+    ]
+
+    booking = models.ForeignKey('Booking', on_delete=models.CASCADE, related_name='invoices')
+    tutor = models.ForeignKey('Tutor', on_delete=models.CASCADE, related_name='invoices')
+    student = models.ForeignKey('User', on_delete=models.CASCADE, related_name='invoices_as_student')
+    total_hours = models.FloatField()
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta: 
+        ordering = ['-created_at']
+
+    def mark_as_paid(self):
+        """Mark the invoice as paid."""
+        self.status = 'Paid'
+        self.save()
+
+    def __str__(self):
+        return f"Invoice {self.id} for Booking {self.booking.id} - Status: {self.status}"

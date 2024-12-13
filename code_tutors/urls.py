@@ -40,6 +40,11 @@ urlpatterns = [
     #tutor availability
     path('tutor/profile/availability/', views.tutor_availability, name='tutor_availability'),
 
+    #Invoice related URL paths
+    path('invoices/admin/invoices/', views.admin_manage_invoices, name='admin_manage_invoices'),
+    path('invoices/admin/generate/', views.admin_generate_invoices, name='admin_generate_invoices'),
+    path('invoices/admin/<int:invoice_id>/mark-paid/', views.admin_mark_invoice_paid, name='admin_mark_invoice_paid'),
+    path('dashboard/', views.user_invoices, name = "dashboard"),
 
 ]
 
