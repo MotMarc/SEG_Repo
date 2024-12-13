@@ -210,7 +210,6 @@ def approve_booking(request, booking_id):
     
     messages.success(request, f"Booking with ID {booking_id} has been approved.")
     
-    # Redirect to the admin booking creation page with booking_id as a GET parameter
     return redirect(reverse('admin_create_booking') + f'?booking_id={booking_id}')
 
 
@@ -220,7 +219,6 @@ def decline_booking(request, booking_id):
     """Decline a specific booking by rejecting student approval."""
     booking = get_object_or_404(Booking, id=booking_id, status=Booking.PENDING)
     
-    # Set student approval to rejected
     booking.student_approval = Booking.STUDENT_REJECTED
     booking.save()
     
@@ -251,12 +249,10 @@ def tutor_profile(request):
     """Allow tutors to select the languages and specializations they can teach."""
     user = request.user
 
-    # Check if the user is a tutor
     if user.account_type != 'tutor':
         messages.error(request, "You must be a tutor to access this page.")
         return redirect('dashboard')
 
-    # Ensure the Tutor object exists
     tutor, created = Tutor.objects.get_or_create(user=user)
 
     if request.method == 'POST':
@@ -278,13 +274,11 @@ def admin_create_booking(request):
     """Allow admins to create a new booking or edit an existing one."""
     booking_id = request.GET.get('booking_id')
     if booking_id:
-        # Editing an existing booking
         booking = get_object_or_404(Booking, id=booking_id)
         if request.method == 'POST':
             form = AdminBookingForm(request.POST, instance=booking)
             if form.is_valid():
                 booking = form.save(commit=False)
-                # Reset approvals if admin is editing
                 booking.student_approval = Booking.STUDENT_APPROVAL_PENDING
                 booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING
                 booking.save()
@@ -295,15 +289,13 @@ def admin_create_booking(request):
         else:
             form = AdminBookingForm(instance=booking)
     else:
-        # Creating a new booking
         if request.method == 'POST':
             form = AdminBookingForm(request.POST)
             if form.is_valid():
                 booking = form.save(commit=False)
-                # Do not set status directly; let save() handle it
-                booking.status = Booking.PENDING  # Explicitly set to 'Pending'
-                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  # Mark as pending student approval
-                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  # Mark as pending tutor approval
+                booking.status = Booking.PENDING  
+                booking.student_approval = Booking.STUDENT_APPROVAL_PENDING  
+                booking.tutor_approval = Booking.TUTOR_APPROVAL_PENDING  
                 booking.save()
                 messages.success(request, "Booking created successfully! Awaiting student and tutor approval.")
                 return redirect('admin_pending_bookings')
@@ -325,13 +317,12 @@ def view_bookings(request):
     context = {}
 
     if user.account_type == 'student':
-        # Fetch bookings where the user is the student
         student_bookings = Booking.objects.filter(student=user).order_by('term__start_date', 'day_of_week', 'start_time')
         context['student_bookings'] = student_bookings
         context['role'] = 'Student'
     elif user.is_tutor:
         try:
-            tutor = user.tutor  # Access the related Tutor object
+            tutor = user.tutor 
             tutor_bookings = Booking.objects.filter(tutor=tutor).order_by('term__start_date', 'day_of_week', 'start_time')
             context['tutor_bookings'] = tutor_bookings
             context['role'] = 'Tutor'
@@ -339,7 +330,6 @@ def view_bookings(request):
             messages.error(request, "Tutor profile does not exist. Please complete your tutor profile.")
             return redirect('tutor_profile')
     else:
-        # Handle unexpected account types or non-student/tutor users
         messages.error(request, "You do not have access to this page.")
         return redirect('dashboard')
 
@@ -353,27 +343,23 @@ def accept_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     user = request.user
 
-    # Check if the user is the student
     if booking.student == user:
         if booking.student_approval != Booking.STUDENT_APPROVED:
             booking.student_approval = Booking.STUDENT_APPROVED
             booking.save()
             messages.success(request, "You have accepted the booking.")
             
-            # Check if both approvals are now approved
             if booking.tutor_approval == Booking.TUTOR_APPROVED:
                 generate_lessons_for_booking(booking)
                 messages.success(request, "Lessons have been generated based on the approvals.")
         else:
             messages.info(request, "You have already accepted this booking.")
-    # Check if the user is the tutor
     elif hasattr(user, 'tutor') and booking.tutor == user.tutor:
         if booking.tutor_approval != Booking.TUTOR_APPROVED:
             booking.tutor_approval = Booking.TUTOR_APPROVED
             booking.save()
             messages.success(request, "You have accepted the booking.")
             
-            # Check if both approvals are now approved
             if booking.student_approval == Booking.STUDENT_APPROVED:
                 generate_lessons_for_booking(booking)
                 messages.success(request, "Lessons have been generated based on the approvals.")
@@ -393,7 +379,6 @@ def generate_lessons_for_booking(booking):
     frequency_days = 7 if booking.frequency == 'Weekly' else 14
     current_date = start_date
 
-    # Convert day_of_week string to integer (Monday=0, Sunday=6)
     day_of_week_mapping = {
         'Monday': 0,
         'Tuesday': 1,
@@ -405,7 +390,6 @@ def generate_lessons_for_booking(booking):
     }
     booking_weekday = day_of_week_mapping.get(booking.day_of_week, 0)
 
-    # Find the first occurrence of the booking's day_of_week within the term
     while current_date.weekday() != booking_weekday:
         current_date += timedelta(days=1)
 
@@ -425,26 +409,22 @@ def reject_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     user = request.user
 
-    # Check if the user is the student
     if booking.student == user:
         if booking.student_approval != Booking.STUDENT_REJECTED:
             booking.student_approval = Booking.STUDENT_REJECTED
             booking.save()
             messages.success(request, "You have rejected the booking.")
             
-            # Optionally, delete associated lessons if any
             Lesson.objects.filter(booking=booking).delete()
             messages.info(request, "All associated lessons have been canceled.")
         else:
             messages.info(request, "You have already rejected this booking.")
-    # Check if the user is the tutor
     elif hasattr(user, 'tutor') and booking.tutor == user.tutor:
         if booking.tutor_approval != Booking.TUTOR_REJECTED:
             booking.tutor_approval = Booking.TUTOR_REJECTED
             booking.save()
             messages.success(request, "You have rejected the booking.")
             
-            # Optionally, delete associated lessons if any
             Lesson.objects.filter(booking=booking).delete()
             messages.info(request, "All associated lessons have been canceled.")
         else:
@@ -457,7 +437,6 @@ def reject_booking(request, booking_id):
 @login_required
 def booking_calendar_data(request):
     user = request.user
-    # Fetch bookings based on user type (student or tutor)
     if user.account_type == 'student':
         bookings = Booking.objects.filter(student=user)
     elif user.account_type == 'tutor':
@@ -470,7 +449,7 @@ def booking_calendar_data(request):
         events.append({
             'title': f"{booking.student} - {booking.tutor}",
             'start': booking.date.isoformat(),
-            'end': (booking.date + booking.duration).isoformat(),  # Assuming duration is timedelta
+            'end': (booking.date + booking.duration).isoformat(),  
             'description': booking.description,
         })
     
@@ -500,38 +479,28 @@ def calendar_bookings_api(request):
 
     events = []
 
-    # Iterate over bookings to create events for recurring days
     for booking in bookings:
-        # Ensure `day_of_week` matches valid days
         recurring_days = [booking.day_of_week]
         start_date = booking.term.start_date
         end_date = booking.term.end_date
 
-        # Loop through all dates from start_date to end_date
         current_date = start_date
         while current_date <= end_date:
-            # Check if the day of the week matches any recurring day
             if current_date.strftime('%A') in recurring_days:
                 events.append({
                     'title': f"{booking.language.name} with {booking.tutor.user.full_name() if booking.tutor else 'No Tutor'}",
-                    'date': current_date.isoformat(),  # Format as YYYY-MM-DD
+                    'date': current_date.isoformat(),  
                     'description': f"Subject: {booking.specialization.name if booking.specialization else 'General'}",
                 })
             current_date += datetime.timedelta(days=1)
 
     return JsonResponse(events, safe=False)
 
-
-
-
-
-#...
 @require_http_methods(['GET', 'POST'])
 @login_required
 def tutor_availability(request):
     """Allow tutors to select their availability for existing terms."""
     user = request.user
-    # Check if the user is a tutor
     if not hasattr(user, 'tutor'):
         messages.error(request, "Only tutors can set availability.")
         return redirect('dashboard')
@@ -540,7 +509,7 @@ def tutor_availability(request):
         form = TutorAvailablityForm(request.POST)
         if form.is_valid():
             availability = form.save(commit=False)
-            availability.tutor = user.tutor  # Associate the logged-in tutor
+            availability.tutor = user.tutor 
             availability.save()
             messages.success(request, "Your availability has been updated.")
             return redirect('dashboard')
